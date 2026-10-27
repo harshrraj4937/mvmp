@@ -21,81 +21,9 @@ import {
 } from "~/db/schema";
 import { getServerEnv } from "~/platform/env";
 
-interface GitHubProfile {
-  [key: string]: unknown;
-  email?: string;
-  name?: string;
-}
+import { buildSocialProviders } from "./auth-social";
 
-interface GoogleProfile {
-  [key: string]: unknown;
-  email?: string;
-  family_name?: string;
-  given_name?: string;
-}
-
-interface SocialProviderConfig {
-  [key: string]: unknown;
-  clientId: string;
-  clientSecret: string;
-  mapProfileToUser: (
-    profile: GitHubProfile | GoogleProfile,
-  ) => Record<string, unknown>;
-  redirectURI?: string;
-  scope: string[];
-}
-
-const hasGithubCredentials =
-  process.env.AUTH_GITHUB_ID &&
-  process.env.AUTH_GITHUB_SECRET &&
-  process.env.AUTH_GITHUB_ID.length > 0 &&
-  process.env.AUTH_GITHUB_SECRET.length > 0;
-
-const hasGoogleCredentials =
-  process.env.AUTH_GOOGLE_ID &&
-  process.env.AUTH_GOOGLE_SECRET &&
-  process.env.AUTH_GOOGLE_ID.length > 0 &&
-  process.env.AUTH_GOOGLE_SECRET.length > 0;
-
-// Build social providers configuration
-const socialProviders: Record<string, SocialProviderConfig> = {};
-
-if (hasGithubCredentials) {
-  socialProviders.github = {
-    clientId: process.env.AUTH_GITHUB_ID ?? "",
-    clientSecret: process.env.AUTH_GITHUB_SECRET ?? "",
-    mapProfileToUser: (profile: GitHubProfile) => {
-      let firstName = "";
-      let lastName = "";
-      if (profile.name) {
-        const nameParts = profile.name.split(" ");
-        firstName = nameParts[0];
-        lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
-      }
-      return {
-        age: null,
-        firstName,
-        lastName,
-      };
-    },
-    scope: ["user:email", "read:user"],
-  };
-}
-
-if (hasGoogleCredentials) {
-  socialProviders.google = {
-    clientId: process.env.AUTH_GOOGLE_ID ?? "",
-    clientSecret: process.env.AUTH_GOOGLE_SECRET ?? "",
-    mapProfileToUser: (profile: GoogleProfile) => {
-      return {
-        age: null,
-        firstName: profile.given_name ?? "",
-        lastName: profile.family_name ?? "",
-      };
-    },
-    scope: ["openid", "email", "profile"],
-  };
-}
+const socialProviders = buildSocialProviders(getServerEnv());
 
 export const auth = betterAuth({
   account: {

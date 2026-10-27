@@ -5,17 +5,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import type { SocialProviderId } from "~/lib/auth-social";
+
 import { SEO_CONFIG, SYSTEM_CONFIG } from "~/app";
 import { signIn } from "~/lib/auth-client";
-import { GitHubIcon } from "~/ui/components/icons/github";
-import { GoogleIcon } from "~/ui/components/icons/google";
+import { SocialSignIn } from "~/ui/components/auth/social-sign-in";
 import { Button } from "~/ui/primitives/button";
 import { Card, CardContent } from "~/ui/primitives/card";
 import { Input } from "~/ui/primitives/input";
 import { Label } from "~/ui/primitives/label";
-import { Separator } from "~/ui/primitives/separator";
 
-export function SignInPageClient() {
+interface SignInPageClientProps {
+  next: null | string;
+  socialProviders: SocialProviderId[];
+}
+
+export function SignInPageClient({
+  next,
+  socialProviders,
+}: SignInPageClientProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,33 +44,11 @@ export function SignInPageClient() {
         setError("Invalid email or password");
         return;
       }
-      router.push(SYSTEM_CONFIG.redirectAfterSignIn);
+      router.push(next ?? SYSTEM_CONFIG.redirectAfterSignIn);
     } catch (err) {
       setError("Invalid email or password");
       console.error(err);
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGitHubLogin = () => {
-    setLoading(true);
-    try {
-      void signIn.social({ provider: "github" });
-    } catch (err) {
-      setError("Failed to sign in with GitHub");
-      console.error(err);
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = () => {
-    setLoading(true);
-    try {
-      void signIn.social({ provider: "google" });
-    } catch (err) {
-      setError("Failed to sign in with Google");
-      console.error(err);
       setLoading(false);
     }
   };
@@ -176,36 +162,18 @@ export function SignInPageClient() {
                   {loading ? "Signing in..." : "Sign in"}
                 </Button>
               </form>
-              <div className="relative mt-6">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <Button
-                  className="flex items-center gap-2"
-                  disabled={loading}
-                  onClick={handleGitHubLogin}
-                  variant="outline"
-                >
-                  <GitHubIcon className="h-5 w-5" />
-                  GitHub
-                </Button>
-                <Button
-                  className="flex items-center gap-2"
-                  disabled={loading}
-                  onClick={handleGoogleLogin}
-                  variant="outline"
-                >
-                  <GoogleIcon className="h-5 w-5" />
-                  Google
-                </Button>
-              </div>
+              <SocialSignIn
+                callbackURL={next ?? SYSTEM_CONFIG.redirectAfterSignIn}
+                disabled={loading}
+                onError={(message) => {
+                  setError(message);
+                  setLoading(false);
+                }}
+                onStart={() => {
+                  setLoading(true);
+                }}
+                providers={socialProviders}
+              />
               <div className="mt-6 text-center text-sm text-muted-foreground">
                 Don't have an account?{" "}
                 <Link
@@ -213,7 +181,11 @@ export function SignInPageClient() {
                     text-primary underline-offset-4
                     hover:underline
                   `}
-                  href="/auth/sign-up"
+                  href={
+                    next
+                      ? `/auth/sign-up?next=${encodeURIComponent(next)}`
+                      : "/auth/sign-up"
+                  }
                 >
                   Sign up
                 </Link>

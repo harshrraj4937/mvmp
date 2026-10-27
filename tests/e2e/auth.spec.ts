@@ -55,3 +55,40 @@ test("signing up twice with the same email shows an error", async ({
   await expect(page).toHaveURL(/\/auth\/sign-up/);
   expect(await sessionEmail(page)).toBeNull();
 });
+
+test("social buttons appear only for configured providers", async ({
+  page,
+}) => {
+  // The E2E environment has no Google or GitHub credentials.
+  for (const path of ["/auth/sign-in", "/auth/sign-up"]) {
+    await page.goto(path);
+    await expect(page.locator("#email")).toBeVisible();
+    // The card holding the form; the site footer has its own GitHub link.
+    const card = page.locator("form").locator("xpath=..");
+    await expect(card.getByText("Or continue with")).toHaveCount(0);
+    await expect(card.getByRole("button", { name: "Google" })).toHaveCount(0);
+    await expect(card.getByRole("button", { name: "GitHub" })).toHaveCount(0);
+  }
+});
+
+test("sign-in returns to a safe next path", async ({ page }) => {
+  const user = { email: uniqueEmail("next"), name: "Meera Next", password };
+  await signUp(page, user);
+  await expect(page).toHaveURL(/\/dashboard\/uploads/);
+  await signOut(page);
+
+  await page.goto("/auth/sign-in?next=%2Fdashboard%2Fprofile");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(/\/dashboard\/profile$/);
+});
+
+test("sign-in ignores an off-site next path", async ({ page }) => {
+  const user = { email: uniqueEmail("evilnext"), name: "Ravi Next", password };
+  await signUp(page, user);
+  await expect(page).toHaveURL(/\/dashboard\/uploads/);
+  await signOut(page);
+
+  await page.goto("/auth/sign-in?next=%2F%2Fevil.com");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(/\/dashboard\/uploads$/);
+});
