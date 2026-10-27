@@ -36,3 +36,9 @@ export async function sessionEmail(page: Page): Promise<null | string> {
   const body = (await response.json()) as null | { user?: { email?: string } };
   return body?.user?.email ?? null;
 }
+
+export async function signOut(page: Page): Promise<void> {
+  await page.goto("/auth/sign-out");
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.waitForURL((url) => url.pathname === "/");
+}

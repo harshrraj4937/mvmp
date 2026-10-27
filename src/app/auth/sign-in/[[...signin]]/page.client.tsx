@@ -28,10 +28,14 @@ export function SignInPageClient() {
     setLoading(true);
 
     try {
-      await signIn.email({
+      const { error: signInError } = await signIn.email({
         email,
         password,
       });
+      if (signInError) {
+        setError("Invalid email or password");
+        return;
+      }
       router.push(SYSTEM_CONFIG.redirectAfterSignIn);
     } catch (err) {
       setError("Invalid email or password");
