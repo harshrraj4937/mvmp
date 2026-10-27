@@ -22,6 +22,20 @@
       "when": 1793097838867,
       "tag": "0002_military_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793112173800,
+      "tag": "0003_cultured_wendell_vaughn",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793112188553,
+      "tag": "0004_seed_categories",
+      "breakpoints": true
     }
   ]
 }
