@@ -31,7 +31,7 @@ function run(cmd: string[]): void {
 let exitCode = 0;
 try {
   run([...compose, "up", "-d", "--wait"]);
-  run(["bunx", "drizzle-kit", "push", "--force"]);
+  run(["bun", "run", "db:migrate"]);
   run(["bun", "run", "build"]);
   run(["bunx", "playwright", "test", ...process.argv.slice(2)]);
 } catch (error) {
