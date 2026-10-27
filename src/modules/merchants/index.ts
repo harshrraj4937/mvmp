@@ -49,6 +49,15 @@ export {
   rejectSchema,
 } from "./presentation/schemas";
 
+/** API guard for catalog routes: authorizeMerchant, and the shop must be APPROVED. */
+export async function authorizeApprovedMerchant(): Promise<MerchantContext> {
+  const merchant = await authorizeMerchant();
+  if (merchant.status !== "APPROVED") {
+    throw new ForbiddenError("Your shop must be approved to manage products.");
+  }
+  return merchant;
+}
+
 /**
  * API/data guard: the caller's merchant from their membership, or 401/403.
  * Status is read fresh on every request, so a suspension applies at once.

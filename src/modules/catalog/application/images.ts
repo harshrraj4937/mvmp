@@ -8,6 +8,7 @@ import type { MerchantContext } from "~/modules/merchants";
 import { productImagesTable, productsTable } from "~/db/schema";
 import { AppError, ConflictError, NotFoundError } from "~/platform/errors";
 
+import type { ImagePatch } from "../presentation/schemas";
 import type { ImageStorage } from "./image-storage";
 import type { ProductImageView } from "./products";
 
@@ -124,7 +125,7 @@ export async function updateProductImage(
   db: Database,
   ctx: MerchantContext,
   imageId: string,
-  patch: { alt?: string; sortOrder?: number },
+  patch: ImagePatch,
 ): Promise<ProductImageView> {
   const image = await loadOwnedImage(db, ctx, imageId);
   if (image.productStatus === "ARCHIVED") {

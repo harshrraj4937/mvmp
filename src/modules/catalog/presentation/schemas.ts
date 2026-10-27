@@ -2,8 +2,9 @@ import { z } from "zod";
 
 import { suggestSlug } from "~/lib/slug";
 
-import { STOCK_REASONS } from "../domain/constants";
+import { MAX_PRODUCT_IMAGES, STOCK_REASONS } from "../domain/constants";
 import { parseRupees } from "../domain/money";
+import { PRODUCT_STATUSES } from "../domain/product-status";
 import { normalizeSku } from "../domain/sku";
 
 const categoryFields = z.object({
@@ -152,6 +153,30 @@ export const variantPatchSchema = z
   )
   .refine(mrpCoversPrice, mrpIssue);
 
+/** Alt text and position of a product image. */
+export const imagePatchSchema = z
+  .object({
+    alt: z.string().trim().min(1).max(200),
+    sortOrder: wholeNumber(0, MAX_PRODUCT_IMAGES - 1),
+  })
+  .partial()
+  .refine(
+    (patch) => Object.keys(patch).length > 0,
+    "Change at least one field.",
+  );
+
+const optionalParam = <T extends z.ZodType>(schema: T) =>
+  z.preprocess(
+    (value) => (blank(value) ? undefined : value),
+    schema.optional(),
+  );
+
+/** `?q` and `?status` for product lists (merchant and admin). */
+export const productListQuerySchema = z.object({
+  q: optionalParam(z.string().trim().max(100)),
+  status: optionalParam(z.enum(PRODUCT_STATUSES)),
+});
+
 /** An admin hold: why the product was taken down, shown to the merchant. */
 export const holdSchema = z.object({
   reason: z.string().trim().min(5).max(500),
@@ -170,6 +195,7 @@ export const stockAdjustmentSchema = z.object({
 });
 
 export type Hold = z.output<typeof holdSchema>;
+export type ImagePatch = z.output<typeof imagePatchSchema>;
 export type ProductCreate = z.output<typeof productCreateSchema>;
 export type ProductPatch = z.output<typeof productPatchSchema>;
 export type StockAdjustment = z.output<typeof stockAdjustmentSchema>;

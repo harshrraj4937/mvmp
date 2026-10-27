@@ -1,12 +1,23 @@
 import "server-only";
 
 export {
+  holdProduct,
+  listProductsForAdmin,
+  releaseProduct,
+} from "./application/admin";
+export {
   type Category,
   createCategory,
   listActiveCategories,
   listCategories,
   updateCategory,
 } from "./application/categories";
+export { getImageStorage } from "./application/image-storage";
+export {
+  addProductImage,
+  deleteProductImage,
+  updateProductImage,
+} from "./application/images";
 export {
   adjustStock,
   listStockMovements,
@@ -23,11 +34,20 @@ export {
   updateProduct,
 } from "./application/products";
 export type { VariantView } from "./application/shared";
+export {
+  archiveProduct,
+  publishProduct,
+  unpublishProduct,
+} from "./application/status";
 export { addVariant, updateVariant } from "./application/variants";
+export { readImageUpload } from "./presentation/image-upload";
 export {
   categoryCreateSchema,
   categoryPatchSchema,
+  holdSchema,
+  imagePatchSchema,
   productCreateSchema,
+  productListQuerySchema,
   productPatchSchema,
   stockAdjustmentSchema,
   variantCreateSchema,

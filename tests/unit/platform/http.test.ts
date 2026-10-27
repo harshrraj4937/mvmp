@@ -133,3 +133,30 @@ describe("apiRoute", () => {
     expect(await res.json()).toEqual({ data: { id: "m1" } });
   });
 });
+
+describe("parseQuery", () => {
+  test("parses search params with a schema", async () => {
+    const { parseQuery } = await http();
+    const request = new Request("http://x.test/items?status=OPEN&q=diya");
+    expect(
+      parseQuery(
+        request,
+        z.object({ q: z.string(), status: z.enum(["OPEN"]) }),
+      ),
+    ).toEqual({ q: "diya", status: "OPEN" });
+  });
+
+  test("schema failures are a 400 naming the parameter", async () => {
+    const { parseQuery } = await http();
+    const request = new Request("http://x.test/items?status=SHUT");
+    expect(() =>
+      parseQuery(request, z.object({ status: z.enum(["OPEN"]) })),
+    ).toThrow(
+      expect.objectContaining({
+        code: "validation_failed",
+        details: { status: [expect.any(String)] },
+        status: 400,
+      }),
+    );
+  });
+});

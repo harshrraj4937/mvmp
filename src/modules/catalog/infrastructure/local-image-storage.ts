@@ -17,7 +17,9 @@ const KEY_PATTERN = /^[a-z0-9]+\/[a-z0-9]+\.(jpg|png|webp)$/;
 
 /**
  * Images on local disk, served by GET /api/v1/images/<key>. For development,
- * E2E and single-host deployments with a persistent volume.
+ * E2E and single-host deployments with a persistent volume. File calls carry
+ * turbopackIgnore: the directory is runtime data, not something to trace
+ * into the build output.
  */
 export function createLocalImageStorage(directory: string) {
   const root = resolve(directory);
@@ -35,7 +37,7 @@ export function createLocalImageStorage(directory: string) {
     async delete(key: string): Promise<void> {
       const path = pathFor(key);
       if (path) {
-        await rm(path, { force: true });
+        await rm(/*turbopackIgnore: true*/ path, { force: true });
       }
     },
 
@@ -45,8 +47,10 @@ export function createLocalImageStorage(directory: string) {
       if (!path) {
         throw new Error("Image folder is not a valid key segment.");
       }
-      await mkdir(join(root, folder.toLowerCase()), { recursive: true });
-      await writeFile(path, bytes, { flag: "wx" });
+      await mkdir(/*turbopackIgnore: true*/ join(root, folder.toLowerCase()), {
+        recursive: true,
+      });
+      await writeFile(/*turbopackIgnore: true*/ path, bytes, { flag: "wx" });
       return { key, url: `/api/v1/images/${key}` };
     },
 
@@ -62,7 +66,10 @@ export function createLocalImageStorage(directory: string) {
         return null;
       }
       try {
-        return { bytes: new Uint8Array(await readFile(path)), contentType };
+        return {
+          bytes: new Uint8Array(await readFile(/*turbopackIgnore: true*/ path)),
+          contentType,
+        };
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") {
           return null;

@@ -33,6 +33,18 @@ const unavailable = () =>
     503,
   );
 
+/** The image storage configured by the server environment, or 503. */
+export function getImageStorage(): ImageStorage {
+  const env = getServerEnv();
+  return imageStorageFor({
+    allowLocalInProduction: env.IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION,
+    driver: env.IMAGE_STORAGE_DRIVER,
+    localDir: env.IMAGE_STORAGE_LOCAL_DIR,
+    production: process.env.NODE_ENV === "production",
+    uploadthingToken: env.UPLOADTHING_TOKEN,
+  });
+}
+
 /**
  * The image storage for `config`. UploadThing needs its token; local disk
  * storage is for development and E2E unless explicitly allowed in

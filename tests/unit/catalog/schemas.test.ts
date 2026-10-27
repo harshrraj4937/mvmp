@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  imagePatchSchema,
   productCreateSchema,
+  productListQuerySchema,
   productPatchSchema,
   stockAdjustmentSchema,
   variantFieldsSchema,
@@ -125,5 +127,40 @@ describe("stockAdjustmentSchema", () => {
       stockAdjustmentSchema.safeParse({ delta: 100_001, reason: "RESTOCK" })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("imagePatchSchema", () => {
+  test("trims alt text and accepts an order position", () => {
+    expect(
+      imagePatchSchema.parse({ alt: "  Lit diya  ", sortOrder: "2" }),
+    ).toEqual({
+      alt: "Lit diya",
+      sortOrder: 2,
+    });
+  });
+
+  test("refuses empty patches, blank alt text and negative positions", () => {
+    expect(imagePatchSchema.safeParse({}).success).toBe(false);
+    expect(imagePatchSchema.safeParse({ alt: "   " }).success).toBe(false);
+    expect(imagePatchSchema.safeParse({ sortOrder: -1 }).success).toBe(false);
+  });
+});
+
+describe("productListQuerySchema", () => {
+  test("accepts a known status and a search, ignoring blanks", () => {
+    expect(
+      productListQuerySchema.parse({ q: " diya ", status: "PUBLISHED" }),
+    ).toEqual({
+      q: "diya",
+      status: "PUBLISHED",
+    });
+    expect(productListQuerySchema.parse({ q: "", status: "" })).toEqual({});
+  });
+
+  test("refuses an unknown status", () => {
+    expect(productListQuerySchema.safeParse({ status: "LIVE" }).success).toBe(
+      false,
+    );
   });
 });

@@ -70,3 +70,16 @@ export async function parseJson<T>(
   }
   return result.data;
 }
+
+/** Parses URL search params (first value per name); failures become a 400. */
+export function parseQuery<T>(request: Request, schema: z.ZodType<T>): T {
+  const params = Object.fromEntries(new URL(request.url).searchParams);
+  const result = schema.safeParse(params);
+  if (!result.success) {
+    throw new ValidationError(
+      "Some parameters are not valid.",
+      z.flattenError(result.error).fieldErrors,
+    );
+  }
+  return result.data;
+}
