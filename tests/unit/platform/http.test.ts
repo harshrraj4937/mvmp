@@ -97,6 +97,27 @@ describe("parseJson", () => {
     ).rejects.toMatchObject({ details: { name: expect.any(Array) } });
   });
 
+  test("nested field errors are also keyed by their dotted path", async () => {
+    const { parseJson } = await http();
+    const nested = z.object({
+      variant: z.object({ price: z.number(), sku: z.string() }),
+    });
+    await expect(
+      parseJson(
+        new Request("http://x", {
+          body: JSON.stringify({ variant: { sku: "A" } }),
+          method: "POST",
+        }),
+        nested,
+      ),
+    ).rejects.toMatchObject({
+      details: {
+        variant: [expect.any(String)],
+        "variant.price": [expect.any(String)],
+      },
+    });
+  });
+
   test("returns the parsed value", async () => {
     const { parseJson } = await http();
     await expect(

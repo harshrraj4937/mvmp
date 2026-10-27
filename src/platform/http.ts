@@ -65,7 +65,7 @@ export async function parseJson<T>(
   if (!result.success) {
     throw new ValidationError(
       "Some fields are not valid.",
-      z.flattenError(result.error).fieldErrors,
+      fieldDetails(result.error),
     );
   }
   return result.data;
@@ -82,4 +82,21 @@ export function parseQuery<T>(request: Request, schema: z.ZodType<T>): T {
     );
   }
   return result.data;
+}
+
+/**
+ * Messages per top-level field (z.flattenError), plus each nested issue
+ * under its dotted path ("variant.price") so forms can show it by its input.
+ */
+function fieldDetails(error: z.ZodError): Record<string, string[]> {
+  const details: Record<string, string[]> = {
+    ...(z.flattenError(error).fieldErrors as Record<string, string[]>),
+  };
+  for (const issue of error.issues) {
+    if (issue.path.length > 1) {
+      const key = issue.path.map(String).join(".");
+      details[key] = [...(details[key] ?? []), issue.message];
+    }
+  }
+  return details;
 }

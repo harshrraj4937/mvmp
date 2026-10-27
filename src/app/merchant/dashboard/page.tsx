@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { db } from "~/db";
+import { catalogCounts } from "~/modules/catalog";
 import {
   getMerchantProfile,
   listPickupLocations,
@@ -14,10 +15,17 @@ import { Panel } from "~/ui/gillu/desk/panel";
 
 export default async function MerchantDashboardPage() {
   const merchant = await requireApprovedMerchant("/merchant/dashboard");
-  const [profile, locations] = await Promise.all([
+  const [profile, locations, counts] = await Promise.all([
     getMerchantProfile(db, merchant),
     listPickupLocations(db, merchant),
+    catalogCounts(db, merchant),
   ]);
+  const metrics = [
+    ["Published", counts.byStatus.PUBLISHED, "Live in your shop", "PUBLISHED"],
+    ["Drafts", counts.byStatus.DRAFT, "Waiting for a final touch", "DRAFT"],
+    ["Out of stock", counts.outOfStock, "Nothing left to sell", ""],
+    ["Low stock", counts.lowStock, "A variant has 5 or fewer", ""],
+  ] as const;
   const primary = locations.find((location) => location.isPrimary);
   const firstName = profile.contactName.trim().split(/\s+/)[0] ?? "";
 
@@ -36,9 +44,14 @@ export default async function MerchantDashboardPage() {
           </h2>
           <p>Shop address: /shops/{profile.slug}</p>
           <p>
-            Products, orders and sales appear here once product management is
-            available.
+            {counts.byStatus.PUBLISHED === 1
+              ? "1 product is live in your shop."
+              : `${counts.byStatus.PUBLISHED} products are live in your shop.`}
           </p>
+          <Link className="button" href="/merchant/products">
+            <Icon name="box" />
+            Manage products
+          </Link>
         </div>
         <Image
           alt="Warm festive arrangement with terracotta and marigolds"
@@ -46,6 +59,26 @@ export default async function MerchantDashboardPage() {
           src="/gillu/hero.webp"
           width={1400}
         />
+      </section>
+      <section aria-label="Your catalog" className="metrics overview-metrics">
+        {metrics.map(([label, value, note, status]) => (
+          <Link
+            className="metric"
+            href={
+              status
+                ? `/merchant/products?status=${status}`
+                : "/merchant/products"
+            }
+            key={label}
+          >
+            <span className="metric-top">
+              {label}
+              <Icon name="arrow" />
+            </span>
+            <strong className="metric-value">{value}</strong>
+            <span className="metric-note">{note}</span>
+          </Link>
+        ))}
       </section>
       <div className="overview-grid">
         <Panel
