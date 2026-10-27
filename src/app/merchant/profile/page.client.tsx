@@ -6,15 +6,8 @@ import { useState } from "react";
 import type { MerchantProfile } from "~/modules/merchants/application/profile";
 
 import { fieldErrors, sendJson } from "~/lib/api-client";
-import { Badge } from "~/ui/primitives/badge";
-import { Button } from "~/ui/primitives/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/ui/primitives/card";
+import { DeskBadge } from "~/ui/gillu/desk/badge";
+import { Panel } from "~/ui/gillu/desk/panel";
 
 import {
   type AddressValues,
@@ -81,52 +74,53 @@ export function ProfileForm({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Shop profile</CardTitle>
-        <CardDescription className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{profile.status}</Badge>
+    <Panel
+      action={
+        <span className="row wrap">
+          <DeskBadge tone="neutral">{profile.status}</DeskBadge>
           {!profile.complianceVerified && (
-            <Badge
+            <DeskBadge
               title="Gillu has not confirmed these registrations yet"
-              variant="secondary"
+              tone="warning"
             >
               Unverified
-            </Badge>
+            </DeskBadge>
           )}
+        </span>
+      }
+      title="Store details"
+    >
+      {(underReview || readOnly) && (
+        <p className="notice form-notice">
           {underReview && "Your shop is under review and cannot be edited."}
           {readOnly && "Only the shop owner can change the profile."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-8" noValidate onSubmit={save}>
-          <ProfileFields
-            errors={errors}
-            locked={new Set(locked)}
-            onChange={setValues}
-            readOnly={readOnly || underReview}
-            showReturnAddress
-            values={values}
-          />
-          {message && (
-            <p
-              className={
-                message.error
-                  ? "text-sm font-medium text-destructive"
-                  : "text-sm font-medium text-green-700"
-              }
-              role={message.error ? "alert" : "status"}
-            >
-              {message.text}
-            </p>
-          )}
-          {!readOnly && !underReview && (
-            <Button disabled={saving} type="submit">
+        </p>
+      )}
+      <form noValidate onSubmit={save}>
+        <ProfileFields
+          errors={errors}
+          locked={new Set(locked)}
+          onChange={setValues}
+          readOnly={readOnly || underReview}
+          showReturnAddress
+          values={values}
+        />
+        {message && (
+          <p
+            className={message.error ? "form-message error" : "form-message"}
+            role={message.error ? "alert" : "status"}
+          >
+            {message.text}
+          </p>
+        )}
+        {!readOnly && !underReview && (
+          <div className="form-actions">
+            <button className="button primary" disabled={saving} type="submit">
               {saving ? "Saving…" : "Save profile"}
-            </Button>
-          )}
-        </form>
-      </CardContent>
-    </Card>
+            </button>
+          </div>
+        )}
+      </form>
+    </Panel>
   );
 }

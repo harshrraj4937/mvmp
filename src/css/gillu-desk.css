@@ -2497,3 +2497,113 @@ html:has(.gillu-desk) {
     }
   }
 }
+/* Port additions: the source desk had no real forms, a merchant switcher
+   select and button-only profile/nav controls; these rules style their
+   replacements with the desk's own tokens. */
+@scope (.gillu-desk) {
+  .merchant-select-label {
+    display: block;
+    font-size: 7px;
+    letter-spacing: 0.11em;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .merchant-select-name {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topbar-spacer {
+    margin-left: auto;
+  }
+  .profile-button {
+    display: grid;
+    place-items: center;
+  }
+  .form-sections {
+    display: grid;
+    gap: 26px;
+  }
+  .form-section {
+    display: grid;
+    gap: 14px;
+  }
+  .form-section h2,
+  .settings-group h2 {
+    font-size: 20px;
+  }
+  .settings-group > h2 {
+    margin-bottom: 16px;
+  }
+  .form-grid + .form-fieldset {
+    margin-top: 16px;
+  }
+  .form-section > .muted {
+    font-size: 11px;
+  }
+  .form-fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+  }
+  .form-fieldset legend {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .form-grid.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .field input:disabled,
+  .field textarea:disabled {
+    background: #f4f0e7;
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+  .field input[aria-invalid="true"] {
+    border-color: #c9796b;
+  }
+  .field-error {
+    font-size: 10px;
+    font-weight: 500;
+    color: #a24438;
+    margin-top: 6px;
+  }
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11px;
+    margin: 18px 0;
+  }
+  .form-message {
+    margin-top: 18px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--green);
+  }
+  .form-message.error {
+    color: #a24438;
+  }
+  .form-notice {
+    margin-bottom: 18px;
+  }
+  .status-panel .notice {
+    margin: 0 0 18px;
+  }
+  .dashboard-pickup {
+    margin-top: 14px;
+    font-size: 12px;
+  }
+  @media (max-width: 760px) {
+    .form-grid,
+    .form-grid.three {
+      grid-template-columns: 1fr;
+    }
+  }
+}

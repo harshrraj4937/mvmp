@@ -2,9 +2,6 @@
 
 import type React from "react";
 
-import { Input } from "~/ui/primitives/input";
-import { Label } from "~/ui/primitives/label";
-
 export interface AddressValues {
   city: string;
   line1: string;
@@ -66,8 +63,8 @@ export function AddressFields({
       onChange({ ...value, [key]: event.target.value });
     };
   return (
-    <fieldset className="grid gap-3" disabled={disabled}>
-      <legend className="mb-1 text-sm font-medium">{legend}</legend>
+    <fieldset className="form-fieldset" disabled={disabled}>
+      <legend>{legend}</legend>
       <Field
         id={`${prefix}-line1`}
         label="Address line 1"
@@ -81,12 +78,7 @@ export function AddressFields({
         onChange={set("line2")}
         value={value.line2}
       />
-      <div
-        className={`
-          grid gap-3
-          sm:grid-cols-3
-        `}
-      >
+      <div className="form-grid three">
         <Field
           id={`${prefix}-city`}
           label="City"
@@ -110,24 +102,24 @@ export function AddressFields({
           value={value.postalCode}
         />
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="field-error">{error}</p>}
     </fieldset>
   );
 }
 
 export function Field({ error, hint, id, label, ...input }: FieldProps) {
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <input
         aria-describedby={error ? `${id}-error` : undefined}
         aria-invalid={error ? true : undefined}
         id={id}
         {...input}
       />
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="field-hint">{hint}</p>}
       {error && (
-        <p className="text-sm text-destructive" id={`${id}-error`}>
+        <p className="field-error" id={`${id}-error`}>
           {error}
         </p>
       )}
@@ -167,9 +159,9 @@ export function ProfileFields({
     };
 
   return (
-    <div className="grid gap-6">
-      <section className="grid gap-3">
-        <h2 className="text-lg font-semibold">Store</h2>
+    <div className="form-sections">
+      <section className="form-section">
+        <h2>Store</h2>
         <Field
           disabled={disabled("storeName")}
           error={errors.storeName}
@@ -193,14 +185,9 @@ export function ProfileFields({
           required
           value={values.slug}
         />
-        <div className="grid gap-1.5">
-          <Label htmlFor="description">Description (optional)</Label>
+        <div className="field">
+          <label htmlFor="description">Description (optional)</label>
           <textarea
-            className={`
-              min-h-24 rounded-md border border-input bg-transparent px-3 py-2
-              text-sm shadow-xs
-              disabled:cursor-not-allowed disabled:opacity-50
-            `}
             disabled={disabled("description")}
             id="description"
             maxLength={1000}
@@ -208,7 +195,7 @@ export function ProfileFields({
             value={values.description}
           />
           {errors.description && (
-            <p className="text-sm text-destructive">{errors.description}</p>
+            <p className="field-error">{errors.description}</p>
           )}
         </div>
         <Field
@@ -223,8 +210,8 @@ export function ProfileFields({
         />
       </section>
 
-      <section className="grid gap-3">
-        <h2 className="text-lg font-semibold">Contact</h2>
+      <section className="form-section">
+        <h2>Contact</h2>
         <Field
           disabled={disabled("contactName")}
           error={errors.contactName}
@@ -234,12 +221,7 @@ export function ProfileFields({
           required
           value={values.contactName}
         />
-        <div
-          className={`
-            grid gap-3
-            sm:grid-cols-2
-          `}
-        >
+        <div className="form-grid">
           <Field
             disabled={disabled("contactEmail")}
             error={errors.contactEmail}
@@ -263,7 +245,7 @@ export function ProfileFields({
         </div>
       </section>
 
-      <section className="grid gap-6">
+      <section className="form-section">
         <AddressFields
           disabled={disabled("businessAddress")}
           error={errors.businessAddress}
@@ -288,17 +270,12 @@ export function ProfileFields({
         )}
       </section>
 
-      <section className="grid gap-3">
-        <h2 className="text-lg font-semibold">Business registrations</h2>
-        <p className="text-sm text-muted-foreground">
+      <section className="form-section">
+        <h2>Business registrations</h2>
+        <p className="muted">
           Optional. Gillu will confirm which registrations your shop needs.
         </p>
-        <div
-          className={`
-            grid gap-3
-            sm:grid-cols-3
-          `}
-        >
+        <div className="form-grid three">
           <Field
             disabled={disabled("gstin")}
             error={errors.gstin}

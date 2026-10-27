@@ -8,14 +8,8 @@ import type { MerchantStatus } from "~/modules/merchants/domain/status";
 
 import { fieldErrors, sendJson } from "~/lib/api-client";
 import { suggestSlug } from "~/modules/merchants/domain/slug";
-import { Button } from "~/ui/primitives/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/ui/primitives/card";
+import { PageHeading } from "~/ui/gillu/desk/page-heading";
+import { Panel } from "~/ui/gillu/desk/panel";
 
 import {
   AddressFields,
@@ -97,16 +91,14 @@ export function OnboardingForm({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Open your shop on Gillu</CardTitle>
-        <CardDescription>
-          Tell us about your shop. You can save it as a draft and submit it for
-          review when you are ready.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-8" noValidate onSubmit={submit}>
+    <>
+      <PageHeading
+        eyebrow="WELCOME TO GILLU"
+        subtitle="Tell us about your shop. You can save it as a draft and submit it for review when you are ready."
+        title="Open your shop on Gillu"
+      />
+      <Panel>
+        <form noValidate onSubmit={submit}>
           <ProfileFields
             errors={errors}
             locked={new Set()}
@@ -115,7 +107,7 @@ export function OnboardingForm({
             showReturnAddress={!returnSame}
             values={values}
           />
-          <label className="flex items-center gap-2 text-sm">
+          <label className="check-row">
             <input
               checked={returnSame}
               id="return-same"
@@ -127,17 +119,12 @@ export function OnboardingForm({
             Return address same as business address
           </label>
 
-          <section className="grid gap-3">
-            <h2 className="text-lg font-semibold">Pickup address</h2>
-            <p className="text-sm text-muted-foreground">
+          <section className="form-section">
+            <h2>Pickup address</h2>
+            <p className="muted">
               Where couriers collect your parcels. You can add more later.
             </p>
-            <div
-              className={`
-                grid gap-3
-                sm:grid-cols-3
-              `}
-            >
+            <div className="form-grid three">
               <Field
                 id="pickup-label"
                 label="Label"
@@ -166,7 +153,7 @@ export function OnboardingForm({
                 value={pickup.phone}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="check-row">
               <input
                 checked={pickupSame}
                 id="pickup-same"
@@ -187,22 +174,22 @@ export function OnboardingForm({
                 value={pickup.address}
               />
             )}
-            {errors.pickup && (
-              <p className="text-sm text-destructive">{errors.pickup}</p>
-            )}
+            {errors.pickup && <p className="field-error">{errors.pickup}</p>}
           </section>
 
           {formError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
+            <p className="form-message error" role="alert">
               {formError}
             </p>
           )}
-          <Button disabled={saving} type="submit">
-            {saving ? "Creating…" : "Create shop"}
-          </Button>
+          <div className="form-actions">
+            <button className="button primary" disabled={saving} type="submit">
+              {saving ? "Creating…" : "Create shop"}
+            </button>
+          </div>
         </form>
-      </CardContent>
-    </Card>
+      </Panel>
+    </>
   );
 }
 
@@ -258,36 +245,43 @@ export function ShopStatus({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardDescription>{storeName}</CardDescription>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <p className="text-sm text-muted-foreground">{copy.body}</p>
+    <>
+      <PageHeading
+        eyebrow={storeName.toUpperCase()}
+        subtitle={copy.body}
+        title={copy.title}
+      />
+      <Panel className="status-panel">
         {status === "REJECTED" && rejectionReason && (
-          <blockquote className="border-l-2 pl-3 text-sm">
-            {rejectionReason}
-          </blockquote>
+          <blockquote className="notice danger">{rejectionReason}</blockquote>
         )}
         {error && (
-          <p className="text-sm font-medium text-destructive" role="alert">
+          <p className="form-message error" role="alert">
             {error}
           </p>
         )}
-        {editable && (
-          <div className="flex flex-wrap gap-3">
+        {editable ? (
+          <div className="page-actions">
             {canSubmit && (
-              <Button disabled={submitting} onClick={submitForReview}>
+              <button
+                className="button primary"
+                disabled={submitting}
+                onClick={submitForReview}
+                type="button"
+              >
                 {submitting ? "Submitting…" : "Submit for review"}
-              </Button>
+              </button>
             )}
-            <Button asChild variant="outline">
-              <Link href="/merchant/profile">Edit profile</Link>
-            </Button>
+            <Link className="button" href="/merchant/profile">
+              Edit profile
+            </Link>
           </div>
+        ) : (
+          <p className="muted">
+            Your store profile and pickup locations stay available in the menu.
+          </p>
         )}
-      </CardContent>
-    </Card>
+      </Panel>
+    </>
   );
 }

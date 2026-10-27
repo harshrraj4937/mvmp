@@ -56,6 +56,33 @@ export async function apiJson(response: {
 }
 
 /**
+ * Signs `page` up as a fresh user with an APPROVED shop: onboards and submits
+ * through the API, then approves it as an admin in a separate context.
+ */
+export async function approvedMerchant(
+  browser: Browser,
+  page: Page,
+  storeName: string,
+): Promise<{ shopId: string }> {
+  await signUpFresh(page, "approved");
+  const created = await onboardMerchant(page, { storeName });
+  const shopId = (created.data as { id: string }).id;
+  expect(
+    (await page.request.post("/api/v1/merchant/profile/submit")).status(),
+  ).toBe(200);
+
+  const context = await newClientContext(browser);
+  const admin = await context.newPage();
+  grantAdminRole(await signUpFresh(admin, "admin"));
+  const approved = await admin.request.post(
+    `/api/v1/admin/merchants/${shopId}/approve`,
+  );
+  expect(approved.status()).toBe(200);
+  await context.close();
+  return { shopId };
+}
+
+/**
  * Fills form fields once React has hydrated them. Filling earlier races
  * hydration, which resets controlled inputs. React attaches a
  * `__reactProps$<id>` key to DOM nodes it has hydrated.

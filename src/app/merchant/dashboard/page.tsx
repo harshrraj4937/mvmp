@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { db } from "~/db";
@@ -6,14 +7,10 @@ import {
   listPickupLocations,
   requireApprovedMerchant,
 } from "~/modules/merchants";
-import { Badge } from "~/ui/primitives/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/ui/primitives/card";
+import { DeskBadge } from "~/ui/gillu/desk/badge";
+import { Icon } from "~/ui/gillu/desk/icon";
+import { PageHeading } from "~/ui/gillu/desk/page-heading";
+import { Panel } from "~/ui/gillu/desk/panel";
 
 export default async function MerchantDashboardPage() {
   const merchant = await requireApprovedMerchant("/merchant/dashboard");
@@ -22,74 +19,70 @@ export default async function MerchantDashboardPage() {
     listPickupLocations(db, merchant),
   ]);
   const primary = locations.find((location) => location.isPrimary);
+  const firstName = profile.contactName.trim().split(/\s+/)[0] ?? "";
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-3xl font-bold">{profile.storeName}</h1>
-        <Badge>Approved</Badge>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Shop address: /shops/{profile.slug}
-      </p>
-
-      <div
-        className={`
-          grid gap-4
-          md:grid-cols-2
-        `}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Primary pickup location</CardTitle>
-            <CardDescription>
-              Where couriers collect your parcels.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm">
-            {primary ? (
-              <>
-                <p className="font-medium">{primary.label}</p>
-                <p>
-                  {primary.line1}, {primary.city}, {primary.state}{" "}
-                  {primary.postalCode}
-                </p>
-              </>
-            ) : (
-              <p>No pickup location yet.</p>
-            )}
-            <Link
-              className="mt-2 inline-block underline"
-              href="/merchant/settings/shipping"
-            >
-              Shipping settings
+    <>
+      <PageHeading
+        subtitle={`Namaste, ${firstName}. Here’s what’s happening at ${profile.storeName}.`}
+        title="A good day starts here."
+      />
+      <section className="overview-welcome">
+        <div>
+          <p className="eyebrow">A LITTLE INDIA. A LOT OF HEART.</p>
+          <h2 className="row wrap">
+            {profile.storeName}
+            <DeskBadge tone="delivered">Approved</DeskBadge>
+          </h2>
+          <p>Shop address: /shops/{profile.slug}</p>
+          <p>
+            Products, orders and sales appear here once product management is
+            available.
+          </p>
+        </div>
+        <Image
+          alt="Warm festive arrangement with terracotta and marigolds"
+          height={933}
+          src="/gillu/hero.webp"
+          width={1400}
+        />
+      </section>
+      <div className="overview-grid">
+        <Panel
+          action={
+            <Link className="text-button" href="/merchant/settings/shipping">
+              Shipping settings <Icon name="arrow" />
             </Link>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Shop profile</CardTitle>
-            <CardDescription>
-              Contact details, addresses and registrations.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm">
-            <p>
-              {profile.contactName} · {profile.contactPhone}
-            </p>
-            <Link
-              className="mt-2 inline-block underline"
-              href="/merchant/profile"
-            >
-              Edit profile
+          }
+          title="Primary pickup location"
+        >
+          <p className="muted">Where couriers collect your parcels.</p>
+          {primary ? (
+            <div className="info-item dashboard-pickup">
+              <strong>{primary.label}</strong>
+              <p>
+                {primary.line1}, {primary.city}, {primary.state}{" "}
+                {primary.postalCode}
+              </p>
+            </div>
+          ) : (
+            <p>No pickup location yet.</p>
+          )}
+        </Panel>
+        <Panel
+          action={
+            <Link className="text-button" href="/merchant/profile">
+              Edit profile <Icon name="arrow" />
             </Link>
-          </CardContent>
-        </Card>
+          }
+          title="Shop profile"
+        >
+          <p className="muted">Contact details, addresses and registrations.</p>
+          <p className="dashboard-pickup">
+            {profile.contactName} · {profile.contactPhone}
+          </p>
+        </Panel>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Products, orders and sales appear here once product management is
-        available.
-      </p>
-    </div>
+    </>
   );
 }

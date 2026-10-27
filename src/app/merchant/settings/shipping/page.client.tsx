@@ -6,15 +6,8 @@ import { useState } from "react";
 import type { PickupLocation } from "~/modules/merchants/application/pickup";
 
 import { fieldErrors, sendJson } from "~/lib/api-client";
-import { Badge } from "~/ui/primitives/badge";
-import { Button } from "~/ui/primitives/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/ui/primitives/card";
+import { DeskBadge } from "~/ui/gillu/desk/badge";
+import { PageHeading } from "~/ui/gillu/desk/page-heading";
 
 import {
   AddressFields,
@@ -66,39 +59,35 @@ export function ShippingSettings({
   };
 
   return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Pickup locations</CardTitle>
-          <CardDescription>
-            Couriers collect parcels from your primary location.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+    <>
+      <PageHeading
+        subtitle="Couriers collect parcels from your primary location."
+        title="Where your parcels begin."
+      />
+      <div className="settings-layout">
+        <section className="panel settings-group">
+          <h2>Pickup locations</h2>
           {locations.map((location) => (
-            <div
-              className={`
-                flex flex-wrap items-start justify-between gap-3 rounded-md
-                border p-4
-              `}
-              key={location.id}
-            >
-              <div className="grid gap-1 text-sm">
-                <div className="flex items-center gap-2 font-medium">
+            <div className="setting-row" key={location.id}>
+              <span>
+                <h3 className="row">
                   {location.label}
-                  {location.isPrimary && <Badge>Primary</Badge>}
-                </div>
-                <span>
+                  {location.isPrimary && (
+                    <DeskBadge tone="delivered">Primary</DeskBadge>
+                  )}
+                </h3>
+                <p>
                   {location.line1}
                   {location.line2 ? `, ${location.line2}` : ""}, {location.city}
                   , {location.state} {location.postalCode}
-                </span>
-                <span className="text-muted-foreground">
+                </p>
+                <p>
                   {location.contactName} · {location.phone}
-                </span>
-              </div>
+                </p>
+              </span>
               {!location.isPrimary && (
-                <Button
+                <button
+                  className="button small-button"
                   disabled={busy}
                   onClick={() =>
                     void run(() =>
@@ -109,34 +98,23 @@ export function ShippingSettings({
                       ),
                     )
                   }
-                  size="sm"
-                  variant="outline"
+                  type="button"
                 >
                   Make primary
-                </Button>
+                </button>
               )}
             </div>
           ))}
           {error && (
-            <p className="text-sm font-medium text-destructive" role="alert">
+            <p className="form-message error" role="alert">
               {error}
             </p>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Add a pickup location</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4" noValidate onSubmit={add}>
-            <div
-              className={`
-                grid gap-3
-                sm:grid-cols-3
-              `}
-            >
+        </section>
+        <section className="panel settings-group">
+          <h2>Add a pickup location</h2>
+          <form noValidate onSubmit={add}>
+            <div className="form-grid three">
               <Field
                 error={errors.label}
                 id="new-label"
@@ -175,12 +153,14 @@ export function ShippingSettings({
               prefix="new"
               value={draft.address}
             />
-            <Button disabled={busy} type="submit">
-              Add location
-            </Button>
+            <div className="form-actions">
+              <button className="button primary" disabled={busy} type="submit">
+                Add location
+              </button>
+            </div>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+        </section>
+      </div>
+    </>
   );
 }

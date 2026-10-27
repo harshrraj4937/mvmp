@@ -1,24 +1,32 @@
+import type { Metadata } from "next";
 import type React from "react";
 
-import Link from "next/link";
+import "~/css/gillu-desk.css";
+import { getCurrentMerchant } from "~/modules/merchants";
+import { DeskShell } from "~/ui/gillu/desk/desk-shell";
+import { dmSans, fraunces } from "~/ui/gillu/fonts";
 
-/** Merchant area shell. Each page authorizes itself; this is layout only. */
-export default function MerchantLayout({
+export const metadata: Metadata = {
+  icons: { icon: { type: "image/svg+xml", url: "/gillu/favicon.svg" } },
+  title: "Gillu Merchant Desk",
+};
+
+/** Merchant desk shell. Each page authorizes itself; this is layout only. */
+export default async function MerchantLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const merchant = await getCurrentMerchant();
   return (
-    <div className="container mx-auto grid max-w-4xl gap-6 px-4 py-10">
-      <nav
-        aria-label="Merchant"
-        className="flex flex-wrap gap-4 text-sm text-muted-foreground"
-      >
-        <Link href="/merchant/dashboard">Dashboard</Link>
-        <Link href="/merchant/profile">Profile</Link>
-        <Link href="/merchant/settings/shipping">Shipping</Link>
-      </nav>
-      {children}
+    <div
+      className={`
+        gillu-desk
+        ${fraunces.variable}
+        ${dmSans.variable}
+      `}
+    >
+      <DeskShell merchant={merchant}>{children}</DeskShell>
     </div>
   );
 }
