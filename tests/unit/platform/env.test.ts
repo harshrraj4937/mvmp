@@ -46,4 +46,32 @@ describe("parseServerEnv", () => {
     expect(message).toMatch(/AUTH_SECRET/);
     expect(message).not.toContain(secret);
   });
+
+  test("image storage defaults to UploadThing in .data/images", () => {
+    expect(parseServerEnv(valid)).toMatchObject({
+      IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION: false,
+      IMAGE_STORAGE_DRIVER: "uploadthing",
+      IMAGE_STORAGE_LOCAL_DIR: ".data/images",
+    });
+  });
+
+  test("local image storage in production needs the exact flag value true", () => {
+    expect(
+      parseServerEnv({
+        ...valid,
+        IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION: "true",
+        IMAGE_STORAGE_DRIVER: "local",
+      }),
+    ).toMatchObject({
+      IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION: true,
+      IMAGE_STORAGE_DRIVER: "local",
+    });
+    expect(
+      parseServerEnv({ ...valid, IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION: "1" })
+        .IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION,
+    ).toBe(false);
+    expect(() =>
+      parseServerEnv({ ...valid, IMAGE_STORAGE_DRIVER: "s3" }),
+    ).toThrow(/IMAGE_STORAGE_DRIVER/);
+  });
 });

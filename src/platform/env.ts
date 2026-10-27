@@ -17,6 +17,19 @@ const serverEnvSchema = z.object({
     .refine(
       (url) => url.startsWith("postgres://") || url.startsWith("postgresql://"),
     ),
+  // Only the exact string "true" lets local image storage run in production.
+  IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION: z.preprocess(
+    (value) => value === "true",
+    z.boolean(),
+  ),
+  IMAGE_STORAGE_DRIVER: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.enum(["local", "uploadthing"]).default("uploadthing"),
+  ),
+  IMAGE_STORAGE_LOCAL_DIR: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().default(".data/images"),
+  ),
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
