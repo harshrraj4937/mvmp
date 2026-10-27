@@ -20,6 +20,7 @@ import {
   userTable,
   verificationTable,
 } from "~/db/schema";
+import { getServerEnv } from "~/platform/env";
 
 interface GitHubProfile {
   [key: string]: unknown;
@@ -110,7 +111,7 @@ export const auth = betterAuth({
       trustedProviders: Object.keys(socialProviders),
     },
   },
-  baseURL: process.env.NEXT_SERVER_APP_URL,
+  baseURL: getServerEnv().NEXT_SERVER_APP_URL,
 
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -168,7 +169,7 @@ export const auth = betterAuth({
     }),
   ],
 
-  secret: process.env.AUTH_SECRET,
+  secret: getServerEnv().AUTH_SECRET,
 
   // Only include social providers if credentials are available
   socialProviders,
