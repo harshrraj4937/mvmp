@@ -41,6 +41,13 @@ export {
   MERCHANT_STATUSES,
   type MerchantStatus,
 } from "./domain/status";
+export {
+  onboardingSchema,
+  pickupLocationCreateSchema,
+  pickupLocationPatchSchema,
+  profilePatchSchema,
+  rejectSchema,
+} from "./presentation/schemas";
 
 /**
  * API/data guard: the caller's merchant from their membership, or 401/403.
