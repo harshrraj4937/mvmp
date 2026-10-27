@@ -17,6 +17,21 @@ export function onboarding(
   return onboardingSchema.parse(validOnboarding(overrides));
 }
 
+/** Registers a shop for a new user and returns its context. */
+export async function seedMerchant(
+  db: Database,
+  overrides: Parameters<typeof validOnboarding>[0] = {},
+) {
+  const { registerMerchant } = await import(
+    "~/modules/merchants/application/register"
+  );
+  return registerMerchant(
+    db,
+    { id: await seedUser(db) },
+    onboarding(overrides),
+  );
+}
+
 export async function seedUser(db: Database, role: null | string = null) {
   const id = createId();
   await db.insert(userTable).values({
