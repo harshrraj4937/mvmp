@@ -12,15 +12,4 @@ export const RESERVED_SLUGS: readonly string[] = [
   "shops",
 ];
 
-/** A URL-safe shop slug derived from a store name. */
-export function suggestSlug(name: string): string {
-  return name
-    .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 50)
-    .replace(/-+$/, "");
-}
+export { suggestSlug } from "~/lib/slug";
