@@ -118,6 +118,17 @@ Run 2026-10-27 on `gillu/phase-2` (gate, Task 10):
 | Security boundaries | Non-admin: `/admin/merchants` and `/admin/merchants/[id]` → 404, no merchant contact email in the HTML or in a forged RSC request (now with a router-state tree Next 16 accepts; mutation-tested), admin API → 403. Merchant: shop from membership only; other shop's pickup id → 404; staff cannot edit/submit; suspension applies on the next request. Open redirect: `?next=` same-site paths only. |
 | Google OAuth | NOT VERIFIED — no credentials (NEEDS_INPUT) |
 
+Final review fix pass, 2026-10-27 (same branch):
+
+| Check | Result |
+|---|---|
+| Finding (Critical): open redirect — `?next=%2F%09%2Fevil.com` arrives decoded as `/\t/evil.com`, passed `safeNextPath`, and URL parsing drops the tab → `https://evil.com/`; a newline variant crashed the signed-in server redirect | FIXED — control characters rejected and the path must resolve to the same origin; unit `rejects control characters in …` (5 cases) and E2E `a next path hiding a tab or newline never leaves the site` RED→GREEN |
+| Finding (Important): a real double submit (same payload, same slug) answered `409 slug_taken` instead of `already_merchant_owner`; the race test used two different slugs | FIXED — on a slug conflict the service checks whether the caller now owns a shop; integration `double-submitted onboarding creates exactly one merchant` now sends one payload twice, RED (4/4 runs `slug_taken`) → GREEN |
+| `bun run typecheck` / `lint` / `knip` | PASS |
+| `bun run test:unit` | PASS — 101/101 |
+| `bun run test:integration` | PASS — 39/39 |
+| `bun run test:e2e` | PASS — 27/27 |
+
 ### Phase 3 — Product Management
 Status: NOT_STARTED
 
@@ -267,10 +278,11 @@ FEATURES IMPLEMENTED:
 - Merchant API: onboarding, profile GET/PATCH, submit, pickup locations list/add/update
 - Admin API: review queue with status filter, detail, approve/reject/suspend/reinstate
 - Pages: `/merchant/{onboarding,profile,settings/shipping,dashboard}`, `/admin/merchants`, `/admin/merchants/[id]`; `/admin` → `/admin/merchants`; header "Sell on Gillu"
+- Final review fixes: `?next=` open redirect via tab/newline closed; double-submitted onboarding reports `already_merchant_owner`
 - Forged-RSC leak checks now use a router-state tree Next 16 accepts (the Phase 1 check was vacuous) and assert an RSC response
 FILES CHANGED: `git diff --stat d62c582..gillu/phase-2` (77 files before this report); main areas: src/modules/merchants/**, src/modules/identity/index.ts, src/platform/{errors,http,db-errors}.ts, src/lib/{auth,auth-social,safe-next-path,api-client}.ts, src/db/schema/merchants/*, drizzle/0002_*, src/app/api/v1/**, src/app/merchant/**, src/app/admin/{page,layout}.tsx, src/app/admin/merchants/**, src/app/auth/{sign-in,sign-up}/*, src/ui/components/{auth/social-sign-in,header/header}.tsx, tests/**, docs/*, diagrams/*
 TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke
-TEST RESULTS: unit 96/96, integration 39/39, E2E 26/26; typecheck/lint/knip pass; Compose smoke pass (0002 applied, health 200, merchant API 401 JSON with requestId)
+TEST RESULTS: unit 101/101, integration 39/39, E2E 27/27 after the final-review fix pass (gate before it: 96/39/26); typecheck/lint/knip pass; Compose smoke pass (0002 applied, health 200, merchant API 401 JSON with requestId)
 KNOWN ISSUES:
 - Google OAuth not exercised against Google (no credentials)
 - Staff memberships exist only via the database; invitations and a shop switcher come later
@@ -278,5 +290,6 @@ KNOWN ISSUES:
 - Logo is an https URL field; uploads arrive with the catalog (Phase 3)
 - Dashboard shows no sales/product figures until those phases exist (no mock data)
 - No email notifications on review decisions; merchants check `/merchant/onboarding`
+- Deferred review minors: pickup PATCH cannot clear `line2`; address change detection is key-order sensitive (harmless today); review-action responses documented as admin detail but return the profile; `/admin` redirect page does not call `requireAdmin()` itself; nested pickup field errors collapse to one message
 BLOCKERS: none (Google credentials block only the manual Google check)
 NEXT PHASE: 3 — Product Management

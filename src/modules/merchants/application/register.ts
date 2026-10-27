@@ -29,17 +29,7 @@ export async function registerMerchant(
   user: { id: string },
   input: OnboardingInput,
 ): Promise<MerchantContext> {
-  const [owned] = await db
-    .select({ id: merchantMembersTable.id })
-    .from(merchantMembersTable)
-    .where(
-      and(
-        eq(merchantMembersTable.userId, user.id),
-        eq(merchantMembersTable.role, "owner"),
-      ),
-    )
-    .limit(1);
-  if (owned) {
+  if (await ownsMerchant(db, user.id)) {
     throw alreadyOwner();
   }
 
@@ -69,7 +59,10 @@ export async function registerMerchant(
   } catch (error) {
     const constraint = uniqueViolation(error);
     if (constraint === "merchants_slug_unique") {
-      throw slugTaken();
+      // A double submit carries the same slug, so the second request
+      // trips the slug index before the one-owner index: report the
+      // real reason when the slug went to this user's own new shop.
+      throw (await ownsMerchant(db, user.id)) ? alreadyOwner() : slugTaken();
     }
     if (constraint === "merchant_members_one_owned_per_user") {
       throw alreadyOwner();
@@ -85,4 +78,18 @@ export async function registerMerchant(
     storeName: input.storeName,
     userId: user.id,
   };
+}
+
+async function ownsMerchant(db: Database, userId: string): Promise<boolean> {
+  const [owned] = await db
+    .select({ id: merchantMembersTable.id })
+    .from(merchantMembersTable)
+    .where(
+      and(
+        eq(merchantMembersTable.userId, userId),
+        eq(merchantMembersTable.role, "owner"),
+      ),
+    )
+    .limit(1);
+  return owned !== undefined;
 }

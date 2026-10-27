@@ -73,9 +73,11 @@ test("a user who already owns a shop gets 409 already_merchant_owner", async () 
 
 test("double-submitted onboarding creates exactly one merchant", async () => {
   const user = await seedUser(db);
+  // A double click sends the same payload twice, slug included.
+  const input = onboarding();
   const results = await Promise.allSettled([
-    registerMerchant(db, { id: user }, onboarding()),
-    registerMerchant(db, { id: user }, onboarding()),
+    registerMerchant(db, { id: user }, input),
+    registerMerchant(db, { id: user }, input),
   ]);
 
   expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);

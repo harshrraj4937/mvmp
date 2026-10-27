@@ -27,3 +27,15 @@ test.each([
 ])("rejects %s", (path) => {
   expect(safeNextPath(path)).toBeNull();
 });
+
+// Next.js decodes searchParams before the page sees them, and URL parsing
+// drops tabs and newlines: "/\t/evil.com" resolves to https://evil.com/.
+test.each([
+  "/\t/evil.com",
+  "/\n/evil.com",
+  "/\r/evil.com",
+  "/%09/evil.com",
+  "/\u0000x",
+])("rejects control characters in %j", (path) => {
+  expect(safeNextPath(path)).toBeNull();
+});

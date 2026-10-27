@@ -92,3 +92,23 @@ test("sign-in ignores an off-site next path", async ({ page }) => {
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(/\/dashboard\/uploads$/);
 });
+
+test("a next path hiding a tab or newline never leaves the site", async ({
+  page,
+}) => {
+  // Next.js decodes %09 to a tab before the page sees it; URL parsing then
+  // drops the tab, so "/\t/evil.com" would mean https://evil.com/.
+  const user = { email: uniqueEmail("tabnext"), name: "Ravi Tab", password };
+  await signUp(page, user);
+  await expect(page).toHaveURL(/\/dashboard\/uploads/);
+
+  // Already signed in: the server redirect.
+  await page.goto("/auth/sign-in?next=%2F%0A%2Fevil.com");
+  await expect(page).toHaveURL(/^http:\/\/[^/]*:3100\/dashboard\/uploads$/);
+  await signOut(page);
+
+  // Signing in: the client redirect.
+  await page.goto("/auth/sign-in?next=%2F%09%2Fevil.com");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(/^http:\/\/[^/]*:3100\/dashboard\/uploads$/);
+});

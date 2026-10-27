@@ -57,7 +57,7 @@ Shared merchant fixtures: `tests/support/merchant-fixtures.ts`
 | `tests/unit/platform/logger.test.ts` | secret keys redacted at top level and one level down |
 | `tests/unit/db/auth-db-transform.test.ts` | generated relations stripped without losing tables; unknown CLI output refused |
 | `tests/unit/identity/roles.test.ts` | `isAdmin` for admin, multi-role, user, null, missing, look-alike role |
-| `tests/unit/identity/safe-next-path.test.ts` | `?next=` accepts same-site paths; rejects absolute/protocol-relative URLs, backslashes, encoded slashes, whitespace, undecodable input |
+| `tests/unit/identity/safe-next-path.test.ts` | `?next=` accepts same-site paths; rejects absolute/protocol-relative URLs, backslashes, encoded slashes, whitespace, control characters (tab/CR/LF, raw or `%09`), undecodable input |
 | `tests/unit/identity/auth-social.test.ts` | Google/GitHub configured only with id and secret; profile → first/last name |
 | `tests/unit/platform/http.test.ts` | error shape + request id; subclass status/codes; unknown error → generic 500 (no message leak); non-JSON body; field errors; `ok()` + `no-store` |
 | `tests/unit/merchants/status.test.ts` | every allowed and refused transition; only APPROVED sells |
@@ -70,7 +70,7 @@ Shared merchant fixtures: `tests/support/merchant-fixtures.ts`
 | `tests/integration/merchants/profile.test.ts` | owner edits/clears fields; staff refused; approved slug locked with nothing written; under review refused; `slug_taken`; submit/resubmit clears rejection reason |
 | `tests/integration/merchants/review.test.ts` | approve records reviewer; draft not approvable; reject/suspend/reinstate; unknown id 404; two concurrent admins → exactly one wins; queue filter + owner email; approve/reinstate only from their own state |
 | `tests/integration/merchants/pickup.test.ts` | primary handling; another merchant's id → 404 and unchanged; only primary cannot be unset; DB rejects bad PIN |
-| `tests/e2e/auth.spec.ts` | sign up → sign out → sign in; wrong password shows error, no session; duplicate sign-up shows error; social buttons hidden when unconfigured; safe `next` honoured, off-site `next` ignored |
+| `tests/e2e/auth.spec.ts` | sign up → sign out → sign in; wrong password shows error, no session; duplicate sign-up shows error; social buttons hidden when unconfigured; safe `next` honoured, off-site `next` ignored, `next` hiding a tab/newline stays on site (server and client redirect) |
 | `tests/e2e/merchant-api.spec.ts` | 401 with request id; 403 without shop; one shop per user (409); field errors; edit → submit → `under_review`; only admins review (403, queue, 409 on double approve, 400 bad status/reason); cross-merchant pickup id → 404 |
 | `tests/e2e/merchant-onboarding.spec.ts` | signed-out → sign up → back to onboarding via `next`; UI onboarding → draft → submit → under review, dashboard refused; invalid phone shows field error, no shop; approved dashboard, locked fields, "Unverified", profile save, shipping page; suspension applies on the next request |
 | `tests/e2e/admin-merchants.spec.ts` | Scenario A (submit → admin approves in UI → merchant dashboard); rejection reason shown to merchant; non-admin 404 on list and detail with no contact email in HTML or forged RSC, API 403 |
