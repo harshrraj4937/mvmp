@@ -80,6 +80,25 @@ export async function fillFields(
   }
 }
 
+/**
+ * Headers for an RSC request claiming the `/admin` layout is already on
+ * screen, so Next.js renders only the page segment below it. Shape follows
+ * Next 16's flightRouterStateSchema; an invalid tree is rejected by Next
+ * and would test nothing.
+ */
+export function forgedAdminRscHeaders(): Record<string, string> {
+  const tree = [
+    "",
+    { children: ["admin", { children: ["__PAGE__", {}] }] },
+    null,
+    null,
+  ];
+  return {
+    "next-router-state-tree": encodeURIComponent(JSON.stringify(tree)),
+    rsc: "1",
+  };
+}
+
 /** Grants admin through the real CLI, using the E2E runner's environment. */
 export function grantAdminRole(email: string): void {
   execFileSync("bun", ["scripts/admin-grant.ts", email], { stdio: "pipe" });

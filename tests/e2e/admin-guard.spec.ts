@@ -1,5 +1,6 @@
 import {
   expect,
+  forgedAdminRscHeaders,
   grantAdminRole,
   signOut,
   signUp,
@@ -66,20 +67,9 @@ test("non-admin never receives other users' data from admin pages", async ({
 
   // A client-side navigation that claims the /admin layout is already
   // rendered: Next.js then renders only the page segment, skipping the layout.
-  const routerStateTree = [
-    "",
-    { children: ["admin", { children: ["__PAGE__", {}] }] },
-    null,
-    null,
-    true,
-  ];
   const rsc = await page.request.get("/admin/summary", {
-    headers: {
-      "next-router-state-tree": encodeURIComponent(
-        JSON.stringify(routerStateTree),
-      ),
-      rsc: "1",
-    },
+    headers: forgedAdminRscHeaders(),
   });
+  expect(rsc.headers()["content-type"]).toContain("text/x-component");
   expect(await rsc.text()).not.toContain(victim);
 });

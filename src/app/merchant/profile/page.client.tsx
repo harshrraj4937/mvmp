@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import type { MerchantProfile } from "~/modules/merchants/application/profile";
 
+import { fieldErrors, sendJson } from "~/lib/api-client";
 import { Badge } from "~/ui/primitives/badge";
 import { Button } from "~/ui/primitives/button";
 import {
@@ -15,7 +16,6 @@ import {
   CardTitle,
 } from "~/ui/primitives/card";
 
-import { fieldErrors, sendJson } from "../api.client";
 import {
   type AddressValues,
   ProfileFields,
