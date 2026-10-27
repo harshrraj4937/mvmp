@@ -48,7 +48,7 @@ test("signed-out visitors sign up and come back to onboarding", async ({
     /\/auth\/sign-in\?next=%2Fmerchant%2Fonboarding$/,
   );
 
-  await page.getByRole("link", { name: "Sign up" }).click();
+  await page.getByRole("main").getByRole("link", { name: "Sign up" }).click();
   await expect(page).toHaveURL(
     /\/auth\/sign-up\?next=%2Fmerchant%2Fonboarding$/,
   );
