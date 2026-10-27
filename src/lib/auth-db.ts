@@ -8,12 +8,16 @@ const schemaPath = "./src/db/schema/users/tables.ts";
 
 async function main() {
   await execaCommand(
-    `npx @better-auth/cli@latest generate --config ${configPath} --output ${schemaPath}`,
+    `npx auth@latest generate --config ${configPath} --output ${schemaPath} --yes`,
     { stdio: "inherit" },
   );
 
   const filePath = path.resolve(schemaPath);
-  const originalContent = await fs.readFile(filePath, "utf8");
+  // Relations are maintained by hand in ./relations.ts (they also cover
+  // non-auth tables such as uploads), so drop the generated ones.
+  const originalContent = (await fs.readFile(filePath, "utf8"))
+    .replace(/^import \{ relations \} from "drizzle-orm";\n/m, "")
+    .replace(/\nexport const \w+Relations = relations\([\s\S]*$/, "\n");
 
   const s = new MagicString(originalContent);
 
@@ -60,7 +64,9 @@ async function main() {
 
   await fs.writeFile(filePath, s.toString(), "utf8");
 
-  await execaCommand("bun biome check --write .", {
+  await execaCommand(`bunx eslint --fix ${schemaPath}`, { stdio: "inherit" });
+
+  await execaCommand(`bunx biome check --write ${schemaPath}`, {
     stdio: "inherit",
   });
 }

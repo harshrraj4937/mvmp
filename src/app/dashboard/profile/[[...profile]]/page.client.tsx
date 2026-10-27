@@ -42,10 +42,11 @@ export function ProfilePageClient() {
 
     twoFactor
       .enable({
+        method: "totp",
         password,
       })
       .then((result) => {
-        if ("data" in result && result.data) {
+        if ("data" in result && result.data?.method === "totp") {
           const uri = result.data.totpURI;
           setQrCodeData(uri);
 

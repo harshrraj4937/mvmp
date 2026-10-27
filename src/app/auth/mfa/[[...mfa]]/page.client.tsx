@@ -61,10 +61,10 @@ export function TwoFactorPageClient() {
     setBackupLoading(true);
     setBackupError("");
     try {
-      const result = await twoFactor.enable({ password: "" });
+      const result = await twoFactor.enable({ method: "totp", password: "" });
       if (
         "data" in result &&
-        result.data &&
+        result.data?.method === "totp" &&
         Array.isArray(result.data.backupCodes)
       ) {
         setBackupCodes(result.data.backupCodes);
@@ -88,10 +88,10 @@ export function TwoFactorPageClient() {
     setBackupError("");
     setBackupMessage("");
     try {
-      const result = await twoFactor.enable({ password: "" });
+      const result = await twoFactor.enable({ method: "totp", password: "" });
       if (
         "data" in result &&
-        result.data &&
+        result.data?.method === "totp" &&
         Array.isArray(result.data.backupCodes)
       ) {
         setBackupCodes(result.data.backupCodes);

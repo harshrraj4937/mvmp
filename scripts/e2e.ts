@@ -5,8 +5,15 @@ import { randomBytes } from "node:crypto";
 const compose = ["docker", "compose", "-f", "docker-compose.test.yml"];
 const inherit = { stderr: "inherit", stdout: "inherit" } as const;
 
+// Keep only string values: some ambient type merges add non-string keys.
+const inheritedEnv = Object.fromEntries(
+  Object.entries(process.env).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string",
+  ),
+);
+
 const env = {
-  ...process.env,
+  ...inheritedEnv,
   AUTH_SECRET: randomBytes(24).toString("hex"),
   DATABASE_URL: "postgresql://gillu_test:gillu_test@localhost:54329/gillu_test",
   NEXT_PUBLIC_APP_URL: "http://localhost:3100",

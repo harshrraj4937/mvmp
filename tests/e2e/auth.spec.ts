@@ -1,12 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  sessionEmail,
-  signIn,
-  signOut,
-  signUp,
-  uniqueEmail,
-} from "./helpers";
+import { sessionEmail, signIn, signOut, signUp, uniqueEmail } from "./helpers";
 
 const password = "Correct-Horse-9-Battery";
 

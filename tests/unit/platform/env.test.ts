@@ -24,8 +24,9 @@ describe("parseServerEnv", () => {
   });
 
   test("names a missing DATABASE_URL", () => {
-    const { DATABASE_URL: _omitted, ...rest } = valid;
-    expect(() => parseServerEnv(rest)).toThrow(/DATABASE_URL/);
+    expect(() => parseServerEnv({ ...valid, DATABASE_URL: undefined })).toThrow(
+      /DATABASE_URL/,
+    );
   });
 
   test("rejects a non-postgres DATABASE_URL", () => {

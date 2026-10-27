@@ -3,6 +3,7 @@
 
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -131,9 +132,8 @@ export const auth = betterAuth({
     linkAccountsByEmail: true,
   },
 
-  plugins: [
-    twoFactor(),
-  ],
+  // nextCookies must stay last so it sees cookies set by other plugins.
+  plugins: [twoFactor(), nextCookies()],
 
   secret: getServerEnv().AUTH_SECRET,
 
