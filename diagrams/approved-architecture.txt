@@ -1,30 +1,150 @@
+Approved target architecture — see docs/architecture.md for what is actually built.
+
+Approved: 2026-10-27
+Spec: docs/superpowers/specs/2026-10-27-gillu-marketplace-design.md
+Requirements (verbatim): diagrams/implementation-prompt.txt
+
+============================================================
+1. SYSTEM CONTEXT (Mermaid)
+============================================================
+
 flowchart TD
-    CUSTOMER["Customer storefront"]
-    MERCHANT["Merchant dashboard"]
-    ADMIN["Admin dashboard"]
+    C["Customer storefront"] --> NG
+    M["Merchant dashboard"] --> NG
+    A["Admin dashboard"] --> NG
+    NG["gillu-nginx (reverse proxy, only public port)"] --> WEB
+    WEB["gillu-web: Next.js 16 + better-auth\nroute handlers -> application services"]
+    WEB --> MOD["src/modules/* (domain + application)"]
+    MOD -->|"business write + outbox row in one transaction"| DB[("gillu-postgres\nPostgreSQL + Drizzle")]
+    DISP["gillu-outbox-dispatcher"] -->|"poll outbox (FOR UPDATE SKIP LOCKED)"| DB
+    DISP -->|"enqueue (jobId = outbox id)"| R[("gillu-redis\nBullMQ")]
+    R --> PW["gillu-payment-worker"]
+    R --> SW["gillu-shipping-worker"]
+    PW <--> CF["Cashfree API"]
+    SW <--> SR["Shiprocket API"]
+    PW --> MOD
+    SW --> MOD
+    CFW["POST /api/webhooks/cashfree"] --> WEB
+    SRW["POST /api/webhooks/shiprocket"] --> WEB
+    MIG["gillu-migrate (one-shot drizzle-kit migrate)"] --> DB
 
-    WEB["Next.js + Better Auth"]
+Workers import the same application services as gillu-web (same codebase,
+same database). They never write another module's tables directly.
 
-    CORE["Gillu Commerce Modules"]
-    DB[("PostgreSQL + Drizzle")]
-    REDIS[("Redis + BullMQ")]
+============================================================
+2. TECHNOLOGY STACK
+============================================================
 
-    PAYMENT["Cashfree Worker"]
-    SHIPPING["Shiprocket Worker"]
+Frontend      Next.js 16 (App Router), React 19, TypeScript 5.9, Tailwind 4, shadcn/ui
+Backend       Next.js route handlers + application services (modular monolith)
+Auth          better-auth 1.7 (email+password, Google OAuth, twoFactor, admin plugin, nextCookies)
+Validation    Zod 4
+Database      PostgreSQL 16, drizzle-orm 0.45 (postgres-js driver), drizzle-kit generated migrations
+Async         Redis 7 + BullMQ, transactional outbox, dedicated payment + shipping workers
+Payments      Cashfree Payment Gateway (sandbox first)
+Logistics     Shiprocket API (sandbox first; platform account, per-merchant pickup locations)
+Files         UploadThing behind an ImageStorage port (S3-compatible adapter deferred)
+Logging       pino JSON logs, x-request-id correlation (proxy.ts), Sentry when configured
+Testing       Vitest (unit), Vitest + Testcontainers Postgres (integration), Playwright (E2E)
+Deployment    Docker multi-stage image (Next standalone), Docker Compose, nginx
+Tooling       bun (package manager), Node >= 20.9 runtime, ESLint 9, Biome 1.9, knip
 
-    CUSTOMER --> WEB
-    MERCHANT --> WEB
-    ADMIN --> WEB
+============================================================
+3. MODULE BOUNDARIES (src/modules/<module>)
+============================================================
 
-    WEB --> CORE
-    CORE --> DB
-    CORE --> REDIS
+identity       authentication, session validation, permissions (admin role, guards)
+merchants      onboarding, profiles, memberships, pickup/return addresses, approval status
+catalog        products, categories, images, variants, publication status
+inventory      available stock, reserved stock, adjustments, reservations, movements
+cart           carts and cart items (multi-merchant)
+checkout       quote, server-side price/stock/serviceability validation, order placement
+orders         parent orders, merchant suborders, items, transitions, cancellation
+payments       payment attempts, provider references, confirmation, refunds, COD state
+fulfillment    packaging status, shipments, courier assignment, tracking history
+finance        fee settings, commission/shipping snapshots, payables, remittances (no payouts)
+reviews        verified reviews, ratings, merchant replies, moderation
+notifications  new-order, dispatch, delivery, SLA alerts
 
-    REDIS --> PAYMENT
-    REDIS --> SHIPPING
+Layers per module (only when needed): domain/ (pure rules, state machines),
+application/ (use cases), infrastructure/ (Drizzle, provider adapters, jobs),
+presentation/ (Zod DTOs, mappers), index.ts (public interface — other modules
+import only this).
 
-    PAYMENT <--> CASHFREE["Cashfree API"]
-    SHIPPING <--> SHIPROCKET["Shiprocket API"]
+Cross-cutting: src/platform/ (env, logger, request id, errors, outbox,
+idempotency, queue). Process entrypoints: src/workers/*.ts.
 
-    PAYMENT --> DB
-    SHIPPING --> DB
+Rules:
+- A module writes only its own tables; cross-module changes go through the
+  owning module's public service or an outbox event.
+- Merchant-scoped queries take merchantId from the authorized membership,
+  never from the request body.
+- Business rules never live in React components or route handlers.
+
+============================================================
+4. ROLES
+============================================================
+
+ADMIN     better-auth admin plugin, user.role contains "admin"; granted only by CLI (admin:grant)
+CUSTOMER  any authenticated user
+MERCHANT  membership row in merchant_members (owner | staff) on a merchant;
+          selling capabilities additionally require merchant status APPROVED.
+          One user may be a customer and a member of several merchants.
+
+============================================================
+5. DATABASE DESIGN (tables by introducing phase)
+============================================================
+
+Conventions: text cuid2 primary keys; created_at/updated_at timestamptz;
+explicit FK on-delete; money = integer paise in bigint with CHECK >= 0;
+status columns = Postgres enums matching requirements §18; order numbers
+GIL-<n> (parent) and GIL-<n>-<A|B|...> (merchant suborder) from a sequence.
+
+Phase 1  user, session, account, verification, two_factor (+ admin plugin columns), uploads
+Phase 2  merchants, merchant_members, merchant_pickup_locations
+Phase 3  categories, products, product_variants, product_images, inventory, inventory_movements
+Phase 4  carts, cart_items
+Phase 5  customer_addresses, orders, merchant_orders, order_items, order_address_snapshots,
+         order_status_history, inventory_reservations, idempotency_keys, outbox_events,
+         background_job_attempts, merchant_fee_settings, merchant_payables
+Phase 6  payment_attempts, payment_provider_events, refunds, provider_remittances
+Phase 7  shipments, shipment_tracking_events, shipping_quotes
+Phase 8  product_reviews, merchant_review_replies (+ notifications if needed)
+
+erDiagram
+    USER ||--o{ MERCHANT_MEMBERS : "is member"
+    MERCHANTS ||--o{ MERCHANT_MEMBERS : has
+    MERCHANTS ||--o{ MERCHANT_PICKUP_LOCATIONS : ships_from
+    MERCHANTS ||--o{ PRODUCTS : sells
+    CATEGORIES ||--o{ PRODUCTS : groups
+    PRODUCTS ||--|| INVENTORY : stocks
+    PRODUCTS ||--o{ PRODUCT_IMAGES : shows
+    USER ||--o{ ORDERS : places
+    ORDERS ||--o{ MERCHANT_ORDERS : splits_into
+    MERCHANTS ||--o{ MERCHANT_ORDERS : fulfils
+    MERCHANT_ORDERS ||--o{ ORDER_ITEMS : contains
+    PRODUCTS ||--o{ ORDER_ITEMS : snapshotted_as
+    ORDERS ||--o{ PAYMENT_ATTEMPTS : paid_by
+    MERCHANT_ORDERS ||--o{ SHIPMENTS : shipped_via
+    SHIPMENTS ||--o{ SHIPMENT_TRACKING_EVENTS : tracks
+    ORDER_ITEMS ||--o| PRODUCT_REVIEWS : reviewed_in
+
+Non-negotiable constraints (diagrams/core-entiies.txt): every product belongs
+to a merchant; merchant members explicitly authorized; order item prices
+snapshotted; inventory never negative; payment attempt maps to exactly one
+order; provider ids unique; duplicate webhooks never cause duplicate
+transitions; orders keep their shipping address snapshot.
+
+Stock reservation: UPDATE inventory SET available = available - q,
+reserved = reserved + q WHERE product_id = p AND available >= q
+(zero rows => out of stock => rollback).
+
+============================================================
+6. DEPLOYMENT
+============================================================
+
+Compose services: gillu-postgres, gillu-redis, gillu-migrate (one-shot),
+gillu-web, gillu-nginx (Phase 1); gillu-outbox-dispatcher (Phase 5),
+gillu-payment-worker (Phase 6), gillu-shipping-worker (Phase 7).
+Workers reuse the web image with a different command. Postgres and Redis
+publish no ports. Secrets only via env files, never in images.
