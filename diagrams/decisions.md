@@ -333,3 +333,110 @@ confirms which registrations each merchant type needs (open input).
 
 Consequence: approval does not imply verified compliance; later phases must
 not treat these fields as validated.
+
+---
+
+## ADR-026: Gillu UI port keeps the source CSS, scoped
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: The Gillu landing page and merchant desk (`/opt/NH/gillu`) are
+ported to React/TypeScript components that keep the source class names and
+CSS. The CSS lives in `src/css/gillu-site.css` and `src/css/gillu-desk.css`
+wrapped in `@scope (.gillu-site)` / `@scope (.gillu-desk)`, with port
+additions as further `@scope` blocks; fonts load with `next/font/local`.
+Demo-only behaviour (sample data, demo banners, local storage) is dropped.
+The landing page is the `(site)` route group at `/`, the desk is
+`/merchant/*`, and remaining Relivator pages move to the `(starter)` route
+group, keeping Tailwind/shadcn.
+
+Consequence: the two designs cannot leak into each other or into starter
+pages, and visual parity can be checked against the source by screenshot.
+Tailwind's preflight still applies inside the scopes; where it changed the
+source look (image heights) a scoped rule restores it. A unit test fails
+if a ported rule escapes its scope.
+
+---
+
+## ADR-027: Variants own price, MRP, SKU, pack size and stock
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: A product is name, category, description, images and status.
+Everything sold and shipped belongs to a variant: price and declared MRP in
+integer paise (price ≤ MRP when MRP is set), SKU unique per shop, packed
+weight and dimensions (for courier rates), active flag, and one `inventory`
+row. A new product has one unlabelled variant; with more than one, every
+variant needs a label. Variants are deactivated, never deleted.
+
+Consequence: Phase 5 order lines reference variants; a product with one
+size and one with many use the same code paths. `product_variants` carries
+a denormalised `merchant_id` so SKU uniqueness is a plain constraint.
+
+---
+
+## ADR-028: Direct publish for approved shops, with admin hold
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: Owners and staff of an APPROVED shop publish products directly
+(no per-product review; PENDING_APPROVAL stays reserved). Publishing
+re-reads the shop status and requires an active category, an active priced
+variant and an image (`409 not_publishable` with `details.missing`).
+Transitions are guarded UPDATEs: concurrent actions yield one winner and
+`409 invalid_transition`. Admins moderate after the fact: a hold unpublishes
+a published product with a reason (5–500 characters) shown to the merchant
+and blocks republishing (`409 admin_hold`) until released; release leaves
+it UNPUBLISHED. ARCHIVED is final.
+
+Consequence: shops go live without waiting on Gillu, and Gillu can still
+take a product down with an auditable reason (`admin_hold_by`,
+`admin_hold_at`). The storefront must filter on hold, shop status and
+category as `listPurchasableProducts` does.
+
+---
+
+## ADR-029: Image storage driver: local for development, UploadThing for production
+
+Status: Accepted
+Date: 2026-10-27
+Refines: ADR-014
+
+Decision: `IMAGE_STORAGE_DRIVER` selects the `ImageStorage` adapter:
+`uploadthing` (default; server-side `UTApi.uploadFiles`, needs
+`UPLOADTHING_TOKEN`) or `local` (files under `IMAGE_STORAGE_LOCAL_DIR`,
+served by `GET /api/v1/images/<key>` with `nosniff` and an immutable
+one-year cache). `local` is refused in production unless
+`IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION` is exactly `true`. Without a
+usable driver, uploads answer `503 image_storage_unavailable` — never a
+fake success. Uploads are accepted only as JPEG, PNG or WebP detected from
+their bytes, at most 4 MB and 8 per product; dimensions are read with
+`image-size`. The file is stored before its row is inserted and removed
+again if the insert fails.
+
+Consequence: E2E and local development need no third-party account. The
+UploadThing adapter is code complete but unverified against the service
+until a token exists (NEEDS_INPUT). A self-hosted deployment that opts into
+`local` must mount a persistent volume.
+
+---
+
+## ADR-030: Stock changes only through guarded adjustments with a movement log
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: Stock is set when a variant is created (movement INITIAL) and
+afterwards changes only through adjustments with a reason (RESTOCK,
+DAMAGED, CORRECTION, OTHER): `UPDATE inventory SET available = available +
+$d WHERE variant_id = $v AND available + $d >= 0` plus an
+`inventory_movements` row (delta, available after, actor, note) in one
+transaction. Zero rows updated → `409 insufficient_stock`. `reserved`
+exists for Phase 5 and is untouched.
+
+Consequence: stock never goes negative, also under concurrent adjustments
+(integration test with 20 concurrent decrements), and every change has an
+audit trail. Phase 5 reservations use the same guarded-update pattern.

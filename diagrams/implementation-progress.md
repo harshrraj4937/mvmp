@@ -6,7 +6,7 @@ session and passed (requirements §29). Status values: NOT_STARTED,
 IN_PROGRESS, COMPLETED, BLOCKED, NEEDS_INPUT.
 
 ## Current Phase
-Phase 3 — Product Management (not started). Phase 2 COMPLETED on `gillu/phase-2` (not merged).
+Phase 4 — Customer Storefront (not started). Phase 3 COMPLETED on `gillu/phase-3` (not merged); Phase 2 COMPLETED on `gillu/phase-2` (not merged).
 
 ## Audit Notes
 
@@ -130,21 +130,42 @@ Final review fix pass, 2026-10-27 (same branch):
 | `bun run test:e2e` | PASS — 27/27 |
 
 ### Phase 3 — Product Management
-Status: NOT_STARTED
+Status: COMPLETED (UploadThing adapter code complete; manual verification NEEDS_INPUT)
+Branch: `gillu/phase-3` (from `gillu/phase-2` @ 955c722). Also ports the Gillu UI (landing page, merchant desk) from `/opt/NH/gillu`.
 
-- [ ] Categories
-- [ ] Product CRUD
-- [ ] Product images
-- [ ] Product status
-- [ ] Inventory
-- [ ] Stock adjustment
-- [ ] Merchant product management UI
-- [ ] Deliver: approved merchant can publish real products
+- [x] Categories — admin-managed (`/admin/categories`, API), seven seeded (migration 0004), public list
+- [x] Product CRUD — products with a default variant; variants own price/MRP/SKU/pack size/stock (ADR-027); tenant isolation (other shop → 404)
+- [x] Product images — JPEG/PNG/WebP by magic bytes, ≤ 4 MB, ≤ 8; `ImageStorage` port with local and UploadThing drivers (ADR-029). **UploadThing: code complete; manual verification NEEDS_INPUT (token); not run against UploadThing.**
+- [x] Product status — direct publish for approved shops, guarded transitions, publish blockers, admin hold/release (ADR-028)
+- [x] Inventory — `inventory` + append-only `inventory_movements`
+- [x] Stock adjustment — guarded `available + delta >= 0` update with movement, never negative under concurrency (ADR-030)
+- [x] Merchant product management UI — `/merchant/products`, `/new`, `/[id]` in the Gillu desk; overview metrics from real counts
+- [x] Deliver: approved merchant can publish real products (E2E `merchant-products.spec.ts`)
+- [x] Gillu UI port — landing at `/`, merchant desk shell and pages, CSS kept in `@scope` (ADR-026)
+- [x] `listPurchasableProducts` ready for Phase 4
+
+#### Verification
+Run 2026-10-27 on `gillu/phase-3` (gate, Task 13):
+
+| Check | Result |
+|---|---|
+| `bun run typecheck` | PASS |
+| `bun run lint` (ESLint + Biome) | PASS |
+| `bun run knip` | PASS |
+| `bun run test:unit` | PASS — 198/198 (18 files) |
+| `bun run test:integration` (Testcontainers Postgres 16) | PASS — 98/98 (13 files) |
+| `bun run test:e2e` (Playwright, Chromium, includes production build) | PASS — 52/52 |
+| Compose smoke (isolated project `gillu-smoke`, port 18080, throwaway env) | PASS — all services healthy; `migrate` exited 0; `drizzle.__drizzle_migrations` has 5 rows; catalog tables exist; 7 categories; `GET /` → 200 Gillu landing; `GET /api/v1/categories` → 200 with 7 items; `GET /api/v1/merchant/products` → 401 `{"error":{"code":"unauthorized",…},"requestId":…}` with `no-store`; `/api/health` → 200; `down -v` removed only `gillu-smoke_*` volumes. `gillu_*` and `relivator_postgres_data` volumes still exist. |
+| Security boundaries | Catalog API needs an APPROVED shop (401/403, suspension on next request); product/variant/image ids of another shop → 404 (E2E + integration); `/admin/products` and `/admin/categories` → 404 for non-admins, no product names in HTML or forged RSC; admin API → 403; uploads checked by bytes (HTML disguised as JPEG refused); image route refuses path-escaping keys and sends `nosniff`; no secrets in client bundles (storage tokens read server-side only) |
+| UploadThing | NOT VERIFIED against the service — no token (NEEDS_INPUT). Compose default `uploadthing` → uploads answer 503 until a token is set |
+| Visual parity | Landing (360/768/1366) and desk pages (overview, products, profile, shipping at 1366/360) compared by screenshot with the source; differences recorded in the plan ledger |
+
+Note for Phase 4: landing festival/product previews are still illustrative content; the storefront should list from `listPurchasableProducts`.
 
 ### Phase 4 — Customer Storefront
 Status: NOT_STARTED
 
-- [ ] Integrate Gillu landing-page source (NEEDS_INPUT: landing-page source/assets)
+- [x] Integrate Gillu landing-page source — done in Phase 3 (`/`); previews still illustrative
 - [ ] Fetch products from DB
 - [ ] Product detail pages
 - [ ] Merchant shop pages
@@ -293,3 +314,26 @@ KNOWN ISSUES:
 - Deferred review minors: pickup PATCH cannot clear `line2`; address change detection is key-order sensitive (harmless today); review-action responses documented as admin detail but return the profile; `/admin` redirect page does not call `requireAdmin()` itself; nested pickup field errors collapse to one message
 BLOCKERS: none (Google credentials block only the manual Google check)
 NEXT PHASE: 3 — Product Management
+
+### Phase 3 report
+
+PHASE: 3 — Product Management (with the Gillu UI port)
+STATUS: COMPLETED (UploadThing image storage code complete; manual verification NEEDS_INPUT)
+FEATURES IMPLEMENTED:
+- Gillu landing page at `/` and the Gillu merchant desk for `/merchant/*`, ported from `/opt/NH/gillu` to React/TypeScript with the source CSS kept in `@scope` (ADR-026); starter pages moved to the `(starter)` route group; demo-only behaviour dropped
+- Migration 0003 (additive): `categories`, `products`, `product_variants`, `product_images`, `inventory`, `inventory_movements`; 0004 seeds seven categories (`ON CONFLICT DO NOTHING`)
+- Catalog module: rupee input → integer paise, SKU rules, admin categories, products with variants (ADR-027), guarded stock adjustments with a movement log (ADR-030), images by magic bytes with local/UploadThing storage (ADR-029), direct publish with blockers and admin hold/release (ADR-028), `listPurchasableProducts`
+- API: merchant products/variants/images/stock endpoints behind `authorizeApprovedMerchant`; admin categories and products (hold/release); public categories; local image route; `parseQuery`; nested validation errors under dotted keys
+- Pages: `/merchant/products`, `/merchant/products/new`, `/merchant/products/[id]`; overview metrics from real counts; `/admin/categories`, `/admin/products`
+FILES CHANGED: `git diff --stat 955c722..gillu/phase-3` (197 files before this report); main areas: src/app/(site)/**, src/app/(starter)/**, src/app/merchant/**, src/app/api/v1/{merchant,admin,categories,images}/**, src/modules/catalog/**, src/modules/merchants/index.ts, src/platform/{env,http}.ts, src/db/schema/catalog/*, drizzle/0003_*, drizzle/0004_*, src/ui/gillu/**, src/css/gillu-{site,desk}.css, public/gillu/*, scripts/e2e.ts, tests/**, docs/*, diagrams/*
+TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke
+TEST RESULTS: unit 198/198, integration 98/98, E2E 52/52; typecheck/lint/knip pass; Compose smoke pass (5 migrations, 7 categories, landing 200, catalog API 401 JSON with requestId)
+KNOWN ISSUES:
+- UploadThing adapter not exercised against UploadThing (no token); Compose uploads answer 503 until `UPLOADTHING_TOKEN` is set
+- Landing previews (festivals, products) are illustrative until the Phase 4 storefront
+- Merchant UI has no full variant edit form (API supports it); variants can be added, switched off/on and restocked
+- Product card shows no SKU line and raw status text, unlike the source demo
+- Deleting an image does not lock the product row, so a publish racing an image delete can publish without an image
+- Starter `/products` and `/dashboard/*` pages remain until Phase 4 equivalents exist
+BLOCKERS: none (UploadThing token blocks only its manual verification)
+NEXT PHASE: 4 — Customer Storefront

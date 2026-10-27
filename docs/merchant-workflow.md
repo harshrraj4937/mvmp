@@ -1,7 +1,8 @@
 # Merchant Workflow
 
-Status: Phase 2 — onboarding, review, profile and pickup locations are
-implemented and verified (2026-10-27, branch `gillu/phase-2`).
+Status: Phase 3 — onboarding, review, profile, pickup locations and the
+product catalog are implemented and verified (2026-10-27, branch
+`gillu/phase-3`).
 
 Governed by: [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md), requirements §8, §14, §19.
 Decisions: ADR-022 to ADR-025 in [`diagrams/decisions.md`](../diagrams/decisions.md).
@@ -37,7 +38,7 @@ stateDiagram-v2
 | Signed-in user without a shop | Onboard once (creates DRAFT shop, owner membership, primary pickup location in one transaction) |
 | Owner | Edit profile (subject to locks), submit / resubmit, manage pickup locations, see dashboard once APPROVED |
 | Staff member | Read the profile and pickup locations, manage pickup locations; cannot edit the profile or submit. (Staff invitations arrive later; memberships can exist today only through the database.) |
-| Admin (`user.role` contains `admin`) | List and read every shop, approve, reject, suspend, reinstate |
+| Admin (`user.role` contains `admin`) | List and read every shop, approve, reject, suspend, reinstate; manage categories; pause (hold) and release products |
 
 - A user owns at most one shop (ADR-023). A second onboarding attempt is
   `409 already_merchant_owner`, even when two requests race.
@@ -53,13 +54,67 @@ stateDiagram-v2
 | `/merchant/onboarding` | `requireSession` | No shop: the onboarding form ("Create shop"). DRAFT: "Your shop is a draft" + "Submit for review". SUBMITTED: "Your shop is under review". REJECTED: "Your shop needs changes" + the admin's reason. SUSPENDED: "Your shop is suspended". APPROVED: redirect to the dashboard |
 | `/merchant/profile` | `requireMerchant` | Profile form; locked fields disabled with "Locked after approval — contact Gillu to change"; "Unverified" badge until compliance is confirmed |
 | `/merchant/settings/shipping` | `requireMerchant` | Pickup locations, "Make primary", add a location |
-| `/merchant/dashboard` | `requireApprovedMerchant` | Store name, "Approved", shop URL `/shops/<slug>`, primary pickup location. No sales or product numbers yet (no mock data) |
+| `/merchant/dashboard` | `requireApprovedMerchant` | Store name, "Approved", shop URL `/shops/<slug>`, live product count, catalog metrics (published, drafts, out of stock, low stock), primary pickup location. No sales numbers yet (no mock data) |
+| `/merchant/products` | `requireApprovedMerchant` | Product cards with search (`?q`) and status filter (`?status`) |
+| `/merchant/products/new` | `requireApprovedMerchant` | New product form ("Save draft") |
+| `/merchant/products/[id]` | `requireApprovedMerchant` | Details, photos, variants and stock, publish blockers, admin hold notice, Publish / Unpublish / Archive |
+| `/admin/categories` | `requireAdmin` | Add, rename, hide/show and order categories |
+| `/admin/products` | `requireAdmin` | Every shop's products with status tabs; pause with a reason, release |
 | `/admin/merchants` | `requireAdmin` | Review queue with status tabs |
 | `/admin/merchants/[id]` | `requireAdmin` | Full onboarding details, registrations ("Unverified"), pickup locations, actions allowed for the current status only |
 
 Signed-out visitors are sent to `/auth/sign-in?next=<path>`; `next` is
 accepted only when it is a same-site path (`src/lib/safe-next-path.ts`).
 The header links "Sell on Gillu" to `/merchant/onboarding`.
+
+## Products
+
+Owners and staff of an **APPROVED** shop manage products (pages redirect
+others to onboarding; the API answers 403). Suspension applies on the next
+request. Decisions: ADR-027 to ADR-030.
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT: Save draft
+    DRAFT --> PUBLISHED: Publish
+    UNPUBLISHED --> PUBLISHED: Publish (no admin hold)
+    PUBLISHED --> UNPUBLISHED: Unpublish, or admin pause (hold)
+    DRAFT --> ARCHIVED: Archive (asks first)
+    PUBLISHED --> ARCHIVED
+    UNPUBLISHED --> ARCHIVED
+```
+
+- **Publishing** is direct for approved shops (ADR-028). It re-reads the
+  shop's status and needs an active category, an active variant with a
+  price and at least one image; otherwise `409 not_publishable` with
+  `details.missing` (`category`, `variant`, `image`) and the page lists
+  "Before you can publish:".
+- **Admin hold:** an admin pauses a published product with a reason (5–500
+  characters). It becomes UNPUBLISHED, the merchant sees "Gillu has paused
+  this product: <reason>" and cannot publish (`409 admin_hold`) until an
+  admin releases it; release leaves it UNPUBLISHED. A held product can
+  still be edited or archived.
+- **Archived** is final: read-only, no restore.
+- **Variants** carry price, declared MRP, SKU, packed weight and dimensions,
+  and stock (ADR-027). A new product has one unlabelled variant; adding a
+  second requires labels on all (the desk asks for the first one's name).
+  Variants are switched off, never deleted; a published product keeps at
+  least one active variant (`409 last_variant`).
+- **Money:** merchants type rupees ("₹1,299.50", "1,00,000"); stored as
+  integer paise. "Price customers pay (including delivery)" must not exceed
+  "Declared MRP (as printed on the pack, if any)" (Legal Metrology).
+- **SKU:** trimmed, uppercased, letters/digits/`-`/`_`, up to 40, unique per
+  shop (`409 sku_taken`). **Slug:** from the name, unique per shop (a
+  suffix is added), editable while DRAFT only.
+- **Stock** is set when a variant is created (movement INITIAL) and then
+  changes only through adjustments with a reason (RESTOCK, DAMAGED,
+  CORRECTION, OTHER); never below zero (`409 insufficient_stock`), also
+  under concurrent adjustments (ADR-030). Low stock: an active variant with
+  5 or fewer.
+- **Images:** JPEG, PNG or WebP detected from the bytes, up to 4 MB, 8 per
+  product (ADR-029). Alt text defaults to the product name.
+- **Purchasable** (for Phase 4): PUBLISHED, no hold, shop APPROVED,
+  category active, an active variant with stock (`listPurchasableProducts`).
 
 ## Locked fields (ADR-024)
 

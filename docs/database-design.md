@@ -1,6 +1,6 @@
 # Database Design
 
-Status: Phase 2 — auth, uploads and merchant tables. Further marketplace
+Status: Phase 3 — auth, uploads, merchant and catalog tables. Further marketplace
 tables follow the plan in [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md) §6.
 
 ## Workflow
@@ -21,6 +21,8 @@ tables follow the plan in [design](superpowers/specs/2026-10-27-gillu-marketplac
 | `0000_tidy_trish_tilby` | `user`, `session`, `account`, `verification`, `two_factor`, `uploads`, enum `type` (image/video); indexes on session/account `user_id`, two_factor `secret`/`user_id`, verification `identifier` |
 | `0001_tough_malcolm_colcord` | admin plugin: `user.role`, `user.banned` (default false), `user.ban_reason`, `user.ban_expires`, `session.impersonated_by` — additive only |
 | `0002_military_paibok` | Phase 2: enums `merchant_status`, `merchant_member_role`; tables `merchants`, `merchant_members`, `merchant_pickup_locations` with their foreign keys, indexes and CHECK — additive only (no DROP/ALTER of existing tables) |
+| `0003_cultured_wendell_vaughn` | Phase 3: enums `product_status`, `inventory_movement_reason`; tables `categories`, `products`, `product_variants`, `product_images`, `inventory`, `inventory_movements` with foreign keys, unique constraints, CHECKs and indexes — additive only |
+| `0004_seed_categories` | Custom migration: the seven launch categories (ids `cat_<slug>`), `ON CONFLICT DO NOTHING` so a re-run or an admin-created duplicate never fails |
 
 ## Current tables
 
@@ -34,6 +36,15 @@ erDiagram
     merchants ||--o{ merchant_members : has
     merchants ||--o{ merchant_pickup_locations : has
     user |o--o{ merchants : "reviewed_by"
+    merchants ||--o{ products : sells
+    categories ||--o{ products : groups
+    products ||--o{ product_variants : has
+    merchants ||--o{ product_variants : "owns (sku scope)"
+    products ||--o{ product_images : has
+    product_variants ||--|| inventory : stocks
+    product_variants ||--o{ inventory_movements : logs
+    user |o--o{ inventory_movements : "actor"
+    user |o--o{ products : "admin_hold_by"
 ```
 
 | Table | Notes |
@@ -48,8 +59,20 @@ erDiagram
 | `merchant_members` | `merchant_id` → `merchants` and `user_id` → `user` (both cascade); `role` enum owner/staff; unique (`merchant_id`, `user_id`); partial unique index `merchant_members_one_owned_per_user` on `user_id` WHERE `role = 'owner'` (one owned shop per user, ADR-023) |
 | `merchant_pickup_locations` | `merchant_id` → `merchants` (cascade); `label`, `contact_name`, `phone`, `line1`, `line2?`, `city`, `state`, `postal_code` (CHECK `^[1-9][0-9]{5}$`), `is_primary`; partial unique index `merchant_pickup_locations_one_primary` on `merchant_id` WHERE `is_primary`; `provider_location_name` reserved for Shiprocket (Phase 7) |
 
-All Phase 2 timestamps are `timestamptz`. Ids are text cuid2 values generated in the
-application (`createId()`). The merchant schema files use relative imports because
+| `categories` | Admin-managed list. `name` and `slug` unique (`categories_name_unique`, `categories_slug_unique`); `is_active` (hidden categories cannot be chosen and their products are not purchasable); `sort_order`. Slug stays fixed on rename |
+| `products` | `merchant_id` → `merchants` and `category_id` → `categories` (both restrict); `name`, `slug` (unique per shop, `products_merchant_slug_unique`), `description`; `status` enum `product_status` (DRAFT, PENDING_APPROVAL — reserved, PUBLISHED, UNPUBLISHED, ARCHIVED); `currency` CHECK `= 'INR'`; `published_at` (first publish); admin hold `admin_hold_reason`, `admin_hold_by` → `user` (set null), `admin_hold_at`; index (`merchant_id`, `status`) |
+| `product_variants` | `product_id` → `products` (cascade), `merchant_id` → `merchants` (restrict; denormalised for SKU scope); `label` (null only for a single default variant), `sku` unique per shop (`product_variants_merchant_sku_unique`); `price_paise` (bigint, CHECK > 0), `declared_mrp_paise` (CHECK ≥ price when set); `weight_grams`, `length_mm`, `width_mm`, `height_mm` (CHECK > 0); `is_active`; `sort_order` |
+| `product_images` | `product_id` → `products` (cascade); `storage_key`, `url`, `alt`, `width`, `height`, `bytes`, `content_type`, `sort_order`. Bytes live in image storage, never in Postgres |
+| `inventory` | One row per variant (`variant_id` PK → `product_variants`, cascade); `available`, `reserved` (both CHECK ≥ 0; `reserved` used from Phase 5) |
+| `inventory_movements` | Append-only log: `variant_id` → `product_variants` (cascade), `delta` (CHECK ≠ 0), `available_after`, `reason` enum (INITIAL, RESTOCK, DAMAGED, CORRECTION, OTHER), `note`, `actor_user_id` → `user` (set null); index on `variant_id` |
+
+Money is integer paise everywhere (ADR-027); no floating point. Stock only
+changes through a guarded `UPDATE inventory SET available = available + $d
+WHERE variant_id = $v AND available + $d >= 0` in the same transaction as
+its movement row (ADR-030).
+
+All Phase 2 and 3 timestamps are `timestamptz`. Ids are text cuid2 values generated in the
+application (`createId()`). The merchant and catalog schema files use relative imports because
 drizzle-kit does not resolve the `~` alias.
 
 Polar tables (`polar_customer`, `polar_subscription`) were never migrated and

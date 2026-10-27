@@ -34,7 +34,10 @@ errors name the variable, never its value).
 | `REDIS_URL` | no | Set by Compose to `redis://redis:6379` |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | no | Google sign-in appears only when both are set |
 | `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | no | GitHub sign-in |
-| `UPLOADTHING_TOKEN`, `UPLOADTHING_SECRET_KEY` | no | Image uploads |
+| `UPLOADTHING_TOKEN`, `UPLOADTHING_SECRET_KEY` | no | UploadThing; product image uploads need the token when the driver is `uploadthing` |
+| `IMAGE_STORAGE_DRIVER` | no | `uploadthing` (default) or `local` (ADR-029). Without a token the default answers product uploads with `503 image_storage_unavailable` |
+| `IMAGE_STORAGE_LOCAL_DIR` | no | Directory for `local` (default `.data/images`, git-ignored) |
+| `IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION` | no | Exactly `true` lets `local` run in production; mount a persistent volume at `IMAGE_STORAGE_LOCAL_DIR` first, or images are lost with the container |
 | `GILLU_ENV_FILE` | no | Path of the env file Compose loads (default `.env`) |
 
 ## Local development (no Docker for the app)
@@ -94,6 +97,10 @@ Security notes:
   password stored in the database.
 
 ## Known limitations
+
+- Compose ships with `IMAGE_STORAGE_DRIVER=uploadthing` and no image volume:
+  merchants cannot upload product photos (503) until `UPLOADTHING_TOKEN` is
+  set, or until a volume is mounted and local storage is explicitly allowed.
 
 - `next start` warns under `output: "standalone"`; it is used only by the
   E2E runner. Containers run `node server.js` from the standalone output.

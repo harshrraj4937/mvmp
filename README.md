@@ -90,6 +90,14 @@ docker compose run --rm migrate bun run admin:grant you@example.com
 
 Never run `docker compose down -v` unless you intend to delete the database.
 
+Product photos: Compose defaults to `IMAGE_STORAGE_DRIVER=uploadthing`, so
+merchants can upload product images only once `UPLOADTHING_TOKEN` is set
+(until then uploads answer 503). For local development `.env.example` uses
+`IMAGE_STORAGE_DRIVER=local`, which stores files under `.data/images`
+(git-ignored). Local storage in production also needs
+`IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION=true` and a persistent volume; see
+[docs/deployment.md](docs/deployment.md#environment-variables).
+
 ### commands
 
 | command         | description                    |
