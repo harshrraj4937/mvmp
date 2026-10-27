@@ -14,7 +14,7 @@ import type { ProductImageView } from "./products";
 
 import { MAX_IMAGE_BYTES, MAX_PRODUCT_IMAGES } from "../domain/constants";
 import { detectImageType } from "../infrastructure/image-type";
-import { archivedProduct, loadOwnedProduct } from "./shared";
+import { archivedProduct, type Executor, loadOwnedProduct } from "./shared";
 
 const imageColumns = {
   alt: productImagesTable.alt,
@@ -114,10 +114,30 @@ export async function deleteProductImage(
   ctx: MerchantContext,
   imageId: string,
 ): Promise<void> {
-  const image = await loadOwnedImage(db, ctx, imageId);
-  await db
-    .delete(productImagesTable)
-    .where(eq(productImagesTable.id, image.id));
+  const image = await db.transaction(async (tx) => {
+    const owned = await loadOwnedImage(tx, ctx, imageId);
+    // Locked so a publish (which checks for an image) and this delete see
+    // the same photos: a published product never ends up without one.
+    const product = await loadOwnedProduct(tx, ctx, owned.productId, {
+      lock: true,
+    });
+    if (product.status === "PUBLISHED") {
+      const [current] = await tx
+        .select({ images: count() })
+        .from(productImagesTable)
+        .where(eq(productImagesTable.productId, owned.productId));
+      if ((current?.images ?? 0) <= 1) {
+        throw new ConflictError(
+          "last_image",
+          "A published product needs a photo. Upload another one first, or unpublish the product.",
+        );
+      }
+    }
+    await tx
+      .delete(productImagesTable)
+      .where(eq(productImagesTable.id, owned.id));
+    return owned;
+  });
   await deleteQuietly(storage, image.storageKey);
 }
 
@@ -170,13 +190,14 @@ function imageLimit() {
 }
 
 async function loadOwnedImage(
-  db: Database,
+  db: Executor,
   ctx: MerchantContext,
   imageId: string,
 ) {
   const [image] = await db
     .select({
       id: productImagesTable.id,
+      productId: productImagesTable.productId,
       productStatus: productsTable.status,
       storageKey: productImagesTable.storageKey,
     })

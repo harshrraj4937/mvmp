@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { suggestSlug } from "~/lib/slug";
 
-import { MAX_PRODUCT_IMAGES, STOCK_REASONS } from "../domain/constants";
+import { STOCK_REASONS } from "../domain/constants";
 import { parseRupees } from "../domain/money";
 import { PRODUCT_STATUSES } from "../domain/product-status";
 import { normalizeSku } from "../domain/sku";
@@ -157,7 +157,7 @@ export const variantPatchSchema = z
 export const imagePatchSchema = z
   .object({
     alt: z.string().trim().min(1).max(200),
-    sortOrder: wholeNumber(0, MAX_PRODUCT_IMAGES - 1),
+    sortOrder: wholeNumber(0, 10_000),
   })
   .partial()
   .refine(

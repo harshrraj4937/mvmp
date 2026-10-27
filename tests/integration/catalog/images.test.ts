@@ -15,6 +15,10 @@ import {
   createProduct,
   getProduct,
 } from "~/modules/catalog/application/products";
+import {
+  publishProduct,
+  unpublishProduct,
+} from "~/modules/catalog/application/status";
 import { createLocalImageStorage } from "~/modules/catalog/infrastructure/local-image-storage";
 import { NotFoundError } from "~/platform/errors";
 
@@ -163,6 +167,29 @@ test("alt text and order can be edited", async () => {
     sortOrder: 3,
   });
   expect(updated).toMatchObject({ alt: "Close-up", sortOrder: 3 });
+});
+
+test("a published product keeps its last image", async () => {
+  const { product, shop } = await draftProduct();
+  const first = await addProductImage(db, storage, shop, product.id, {
+    bytes: await webp(),
+    name: "only.webp",
+  });
+  await publishProduct(db, shop, product.id);
+  await expect(
+    deleteProductImage(db, storage, shop, first.id),
+  ).rejects.toMatchObject({ code: "last_image", status: 409 });
+  expect((await getProduct(db, shop, product.id)).images).toHaveLength(1);
+
+  // With a second photo, or once unpublished, the image can go.
+  const second = await addProductImage(db, storage, shop, product.id, {
+    bytes: await webp(),
+    name: "second.webp",
+  });
+  await deleteProductImage(db, storage, shop, first.id);
+  await unpublishProduct(db, shop, product.id);
+  await deleteProductImage(db, storage, shop, second.id);
+  expect((await getProduct(db, shop, product.id)).images).toEqual([]);
 });
 
 test("deleting removes the row and the file", async () => {

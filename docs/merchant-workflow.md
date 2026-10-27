@@ -57,7 +57,7 @@ stateDiagram-v2
 | `/merchant/dashboard` | `requireApprovedMerchant` | Store name, "Approved", shop URL `/shops/<slug>`, live product count, catalog metrics (published, drafts, out of stock, low stock), primary pickup location. No sales numbers yet (no mock data) |
 | `/merchant/products` | `requireApprovedMerchant` | Product cards with search (`?q`) and status filter (`?status`) |
 | `/merchant/products/new` | `requireApprovedMerchant` | New product form ("Save draft") |
-| `/merchant/products/[id]` | `requireApprovedMerchant` | Details, photos, variants and stock, publish blockers, admin hold notice, Publish / Unpublish / Archive |
+| `/merchant/products/[id]` | `requireApprovedMerchant` | Details, photos (upload, describe, reorder, remove), variants (add, edit, switch off/on) and stock (adjust, recent changes), publish blockers, admin hold notice, Publish / Unpublish / Archive |
 | `/admin/categories` | `requireAdmin` | Add, rename, hide/show and order categories |
 | `/admin/products` | `requireAdmin` | Every shop's products with status tabs; pause with a reason, release |
 | `/admin/merchants` | `requireAdmin` | Review queue with status tabs |
@@ -112,7 +112,11 @@ stateDiagram-v2
   under concurrent adjustments (ADR-030). Low stock: an active variant with
   5 or fewer.
 - **Images:** JPEG, PNG or WebP detected from the bytes, up to 4 MB, 8 per
-  product (ADR-029). Alt text defaults to the product name.
+  product (ADR-029). Alt text defaults to the product name and can be
+  edited; photos can be reordered (the first is the cover). A published
+  product keeps at least one photo (`409 last_image`).
+- **Desk edit page:** edit a variant's price, MRP, SKU, name and pack size;
+  adjust stock with the last 20 changes listed in the dialog.
 - **Purchasable** (for Phase 4): PUBLISHED, no hold, shop APPROVED,
   category active, an active variant with stock (`listPurchasableProducts`).
 

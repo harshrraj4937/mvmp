@@ -43,6 +43,26 @@ export function ImagesPanel({
     }
   }
 
+  /** Swaps positions with the neighbouring photo; the first is the cover. */
+  async function move(index: number, direction: -1 | 1) {
+    const image = images[index];
+    const other = images[index + direction];
+    if (!image || !other) {
+      return;
+    }
+    const base = `/api/v1/merchant/products/${productId}/images`;
+    const moved = await send(
+      `${base}/${image.id}`,
+      jsonPatch({ sortOrder: other.sortOrder }),
+    );
+    if (moved) {
+      await send(
+        `${base}/${other.id}`,
+        jsonPatch({ sortOrder: image.sortOrder }),
+      );
+    }
+  }
+
   async function upload(event: React.FormEvent) {
     event.preventDefault();
     const file = fileRef.current?.files?.[0];
@@ -78,22 +98,29 @@ export function ImagesPanel({
                 unoptimized
                 width={image.width}
               />
-              <span className="small muted">{image.alt}</span>
-              {!readOnly && (
-                <button
-                  aria-label={`Remove image ${index + 1}`}
-                  className="text-button small"
-                  disabled={busy}
-                  onClick={() =>
+              {readOnly ? (
+                <span className="small muted">{image.alt}</span>
+              ) : (
+                <ImageControls
+                  busy={busy}
+                  image={image}
+                  isFirst={index === 0}
+                  isLast={index === images.length - 1}
+                  onMove={(direction) => void move(index, direction)}
+                  onRemove={() =>
                     void send(
                       `/api/v1/merchant/products/${productId}/images/${image.id}`,
                       { method: "DELETE" },
                     )
                   }
-                  type="button"
-                >
-                  Remove
-                </button>
+                  onSaveAlt={(alt) =>
+                    send(
+                      `/api/v1/merchant/products/${productId}/images/${image.id}`,
+                      jsonPatch({ alt }),
+                    )
+                  }
+                  position={index + 1}
+                />
               )}
             </li>
           ))}
@@ -137,4 +164,94 @@ export function ImagesPanel({
       )}
     </>
   );
+}
+
+function ImageControls({
+  busy,
+  image,
+  isFirst,
+  isLast,
+  onMove,
+  onRemove,
+  onSaveAlt,
+  position,
+}: {
+  busy: boolean;
+  image: ProductImageView;
+  isFirst: boolean;
+  isLast: boolean;
+  onMove: (direction: -1 | 1) => void;
+  onRemove: () => void;
+  onSaveAlt: (alt: string) => Promise<boolean>;
+  position: number;
+}) {
+  const [alt, setAlt] = useState(image.alt);
+  const id = `alt-${image.id}`;
+  return (
+    <>
+      <label className="sr-only" htmlFor={id}>
+        Description of photo {position}
+      </label>
+      <input
+        className="image-alt"
+        id={id}
+        maxLength={200}
+        onChange={(event) => setAlt(event.target.value)}
+        value={alt}
+      />
+      <div className="row wrap">
+        {alt.trim() !== image.alt && (
+          <button
+            aria-label={`Save description of photo ${position}`}
+            className="text-button small"
+            disabled={busy || !alt.trim()}
+            onClick={() => void onSaveAlt(alt.trim())}
+            type="button"
+          >
+            Save
+          </button>
+        )}
+        {!isFirst && (
+          <button
+            aria-label={`Move photo ${position} earlier`}
+            className="text-button small"
+            disabled={busy}
+            onClick={() => onMove(-1)}
+            type="button"
+          >
+            ←
+          </button>
+        )}
+        {!isLast && (
+          <button
+            aria-label={`Move photo ${position} later`}
+            className="text-button small"
+            disabled={busy}
+            onClick={() => onMove(1)}
+            type="button"
+          >
+            →
+          </button>
+        )}
+        <button
+          aria-label={`Remove photo ${position}`}
+          className="text-button small"
+          disabled={busy}
+          onClick={onRemove}
+          type="button"
+        >
+          Remove
+        </button>
+      </div>
+      {isFirst && <span className="small muted">Cover photo</span>}
+    </>
+  );
+}
+
+function jsonPatch(body: unknown): RequestInit {
+  return {
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json" },
+    method: "PATCH",
+  };
 }

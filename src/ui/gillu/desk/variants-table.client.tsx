@@ -54,6 +54,7 @@ export function VariantsTable({
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [stockFor, setStockFor] = useState<null | VariantView>(null);
+  const [editing, setEditing] = useState<null | VariantView>(null);
   const [message, setMessage] = useState("");
 
   async function toggle(variant: VariantView) {
@@ -107,6 +108,13 @@ export function VariantsTable({
                     <div className="row">
                       <button
                         className="button small"
+                        onClick={() => setEditing(variant)}
+                        type="button"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="button small"
                         onClick={() => setStockFor(variant)}
                         type="button"
                       >
@@ -149,6 +157,11 @@ export function VariantsTable({
         open={adding}
         productId={productId}
         unlabelled={variants.find((variant) => variant.label === null)}
+      />
+      <EditVariantDialog
+        onClose={() => setEditing(null)}
+        productId={productId}
+        variant={editing}
       />
       <StockDialog
         onClose={() => setStockFor(null)}
@@ -322,5 +335,166 @@ function AddVariantDialog({
         </div>
       </form>
     </Modal>
+  );
+}
+
+/** Paise as the rupee text a merchant would type ("1299", "1299.5"). */
+const rupees = (paise: null | number) =>
+  paise === null ? "" : String(paise / 100);
+
+type EditValues = Omit<VariantValues, "initialStock">;
+
+function editValues(variant: VariantView): EditValues {
+  return {
+    heightMm: String(variant.heightMm),
+    label: variant.label ?? "",
+    lengthMm: String(variant.lengthMm),
+    mrp: rupees(variant.declaredMrpPaise),
+    price: rupees(variant.pricePaise),
+    sku: variant.sku,
+    weightGrams: String(variant.weightGrams),
+    widthMm: String(variant.widthMm),
+  };
+}
+
+/** Edits price, MRP, SKU, label and pack size; only changed fields are sent. */
+function EditVariantDialog({
+  onClose,
+  productId,
+  variant,
+}: {
+  onClose: () => void;
+  productId: string;
+  variant: null | VariantView;
+}) {
+  return (
+    <Modal
+      onClose={onClose}
+      open={variant !== null}
+      subtitle="Changes to a published product go live at once."
+      title="Edit variant"
+    >
+      {variant && (
+        <EditVariantForm
+          key={variant.id}
+          onDone={onClose}
+          productId={productId}
+          variant={variant}
+        />
+      )}
+    </Modal>
+  );
+}
+
+function EditVariantForm({
+  onDone,
+  productId,
+  variant,
+}: {
+  onDone: () => void;
+  productId: string;
+  variant: VariantView;
+}) {
+  const router = useRouter();
+  const initial = editValues(variant);
+  const [values, setValues] = useState(initial);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const set =
+    (key: keyof EditValues) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setValues({ ...values, [key]: event.target.value });
+    };
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const patch = Object.fromEntries(
+      (Object.keys(values) as (keyof EditValues)[])
+        .filter((key) => values[key] !== initial[key])
+        .map((key) => [key, values[key]]),
+    );
+    if (Object.keys(patch).length === 0) {
+      onDone();
+      return;
+    }
+    setSaving(true);
+    const result = await sendJson(
+      `/api/v1/merchant/products/${productId}/variants/${variant.id}`,
+      "PATCH",
+      patch,
+    );
+    setSaving(false);
+    if (result.error) {
+      const next = fieldErrors(result.error);
+      if (result.error.code === "sku_taken") {
+        next.sku = result.error.message;
+      }
+      setErrors(next);
+      setMessage(Object.keys(next).length > 0 ? "" : result.error.message);
+      return;
+    }
+    onDone();
+    router.refresh();
+  }
+
+  return (
+    <form noValidate onSubmit={submit}>
+      <div className="form-grid">
+        {variant.label !== null && (
+          <Field
+            error={errors.label}
+            id="editLabel"
+            label="Variant name"
+            maxLength={40}
+            onChange={set("label")}
+            required
+            value={values.label}
+          />
+        )}
+        <Field
+          error={errors.sku}
+          id="editSku"
+          label="SKU"
+          onChange={set("sku")}
+          required
+          value={values.sku}
+        />
+        <Field
+          error={errors.price}
+          id="editPrice"
+          inputMode="decimal"
+          label={PRICE_LABEL}
+          onChange={set("price")}
+          required
+          value={values.price}
+        />
+        <Field
+          error={errors.mrp}
+          hint="Leave empty if the pack has no printed MRP."
+          id="editMrp"
+          inputMode="decimal"
+          label={MRP_LABEL}
+          onChange={set("mrp")}
+          value={values.mrp}
+        />
+      </div>
+      <PackFields
+        errors={errors}
+        onChange={set}
+        prefix="edit"
+        values={values}
+      />
+      {message && (
+        <p className="notice danger" role="alert">
+          {message}
+        </p>
+      )}
+      <div className="form-actions">
+        <button className="button primary" disabled={saving} type="submit">
+          Save variant
+        </button>
+      </div>
+    </form>
   );
 }

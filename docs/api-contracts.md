@@ -99,8 +99,8 @@ another shop are 404. Money in requests is rupees as a string or number
 | `POST /merchant/products/{id}/variants` | variant fields + `label` (required) + `initialStock` | 201 product detail | 400, 404, 409 `archived`, 409 `label_required` (an existing variant has no label), 409 `sku_taken` |
 | `PATCH /merchant/products/{id}/variants/{variantId}` | non-empty subset of variant fields, `label`, `isActive`; `mrp: ""` clears MRP | 200 variant | 400 (`mrp`: "Price cannot be higher than the declared MRP."), 404, 409 `archived`, 409 `last_variant`, 409 `label_required`, 409 `sku_taken` |
 | `POST /merchant/products/{id}/images` | multipart: `file` (JPEG, PNG or WebP), optional `alt` | 201 image | 400 `validation_failed` (not multipart, no file), 400 `invalid_image`, 400 `image_too_large` (> 4 MB), 404, 409 `archived`, 409 `image_limit` (8), 503 `image_storage_unavailable` |
-| `PATCH /merchant/products/{id}/images/{imageId}` | non-empty subset of `alt` (1–200), `sortOrder` (0–7) | 200 image | 400, 404, 409 `archived` |
-| `DELETE /merchant/products/{id}/images/{imageId}` | — | 200 `{ data: null }` | 404, 503 `image_storage_unavailable` |
+| `PATCH /merchant/products/{id}/images/{imageId}` | non-empty subset of `alt` (1–200), `sortOrder` (0–10000; lowest is the cover) | 200 image | 400, 404, 409 `archived` |
+| `DELETE /merchant/products/{id}/images/{imageId}` | — | 200 `{ data: null }` | 404, 409 `last_image` (the only photo of a PUBLISHED product), 503 `image_storage_unavailable` |
 | `POST /merchant/variants/{variantId}/stock-adjustments` | `{ delta, reason, note? }` — delta a non-zero whole number up to ±100000; reason RESTOCK, DAMAGED, CORRECTION or OTHER | 200 variant | 400, 404, 409 `archived`, 409 `insufficient_stock` (would go below zero; nothing changes) |
 | `GET /merchant/variants/{variantId}/stock-movements` | — | 200 latest 20 movements, newest first (`delta`, `availableAfter`, `reason`, `note`, `actorName`, `createdAt`) | 404 |
 

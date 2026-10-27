@@ -160,6 +160,19 @@ Run 2026-10-27 on `gillu/phase-3` (gate, Task 13):
 | UploadThing | NOT VERIFIED against the service — no token (NEEDS_INPUT). Compose default `uploadthing` → uploads answer 503 until a token is set |
 | Visual parity | Landing (360/768/1366) and desk pages (overview, products, profile, shipping at 1366/360) compared by screenshot with the source; differences recorded in the plan ledger |
 
+Final review fix pass, 2026-10-27 (same branch; fresh Opus reviewer, no Critical findings):
+
+| Check | Result |
+|---|---|
+| Finding (Important): spec §5.5 controls missing on the product page — no variant edit, no recent stock movements, no image alt/reorder (a wrong price could not be fixed in the desk) | FIXED — "Edit" variant dialog (only changed fields sent), "Recent stock changes" in the stock dialog, per-photo description and move earlier/later; image `sortOrder` range widened to 0–10000 so reordering works after replacements. E2E `a merchant edits a variant, sees stock history and arranges photos` and unit `positions are not capped at the image limit` RED→GREEN |
+| Finding (Important): a published product could lose its last photo (and a publish could race an image delete) | FIXED — `deleteProductImage` locks the product and refuses the last photo of a PUBLISHED product with `409 last_image`; integration `a published product keeps its last image` RED→GREEN |
+| `bun run typecheck` / `lint` / `knip` | PASS |
+| `bun run test:unit` | PASS — 199/199 |
+| `bun run test:integration` | PASS — 99/99 |
+| `bun run test:e2e` | PASS — 53/53 |
+
+Deferred minors (not fixed): concurrent same-name create can 500 on the slug constraint; variant patch loads before the product lock (stale MRP check → DB CHECK 500 under concurrency); image upload and stock adjustment re-check ARCHIVED outside the write; upload size precheck trusts Content-Length (bounded today by the proxy's 10 MB body clone); a PUBLISHED but unpurchasable product (hidden category, sold out) shows no notice; variant/image sub-routes ignore the product id in the path; `parseQuery` keeps the last repeated value though its comment says first, and an over-long `q` silently drops both list filters; `scripts/e2e.ts` leaves its temp image directory; the admin moderation table has no link to view the product; no concurrent-upload test for the eighth slot and no HTTP traversal test for the image route.
+
 Note for Phase 4: landing festival/product previews are still illustrative content; the storefront should list from `listPurchasableProducts`.
 
 ### Phase 4 — Customer Storefront
@@ -327,13 +340,12 @@ FEATURES IMPLEMENTED:
 - Pages: `/merchant/products`, `/merchant/products/new`, `/merchant/products/[id]`; overview metrics from real counts; `/admin/categories`, `/admin/products`
 FILES CHANGED: `git diff --stat 955c722..gillu/phase-3` (197 files before this report); main areas: src/app/(site)/**, src/app/(starter)/**, src/app/merchant/**, src/app/api/v1/{merchant,admin,categories,images}/**, src/modules/catalog/**, src/modules/merchants/index.ts, src/platform/{env,http}.ts, src/db/schema/catalog/*, drizzle/0003_*, drizzle/0004_*, src/ui/gillu/**, src/css/gillu-{site,desk}.css, public/gillu/*, scripts/e2e.ts, tests/**, docs/*, diagrams/*
 TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke
-TEST RESULTS: unit 198/198, integration 98/98, E2E 52/52; typecheck/lint/knip pass; Compose smoke pass (5 migrations, 7 categories, landing 200, catalog API 401 JSON with requestId)
+TEST RESULTS: unit 199/199, integration 99/99, E2E 53/53 after the final-review fix pass (gate before it: 198/98/52); typecheck/lint/knip pass; Compose smoke pass (5 migrations, 7 categories, landing 200, catalog API 401 JSON with requestId)
 KNOWN ISSUES:
 - UploadThing adapter not exercised against UploadThing (no token); Compose uploads answer 503 until `UPLOADTHING_TOKEN` is set
 - Landing previews (festivals, products) are illustrative until the Phase 4 storefront
-- Merchant UI has no full variant edit form (API supports it); variants can be added, switched off/on and restocked
 - Product card shows no SKU line and raw status text, unlike the source demo
-- Deleting an image does not lock the product row, so a publish racing an image delete can publish without an image
+- Deferred final-review minors: see "Final review fix pass" under Phase 3 verification
 - Starter `/products` and `/dashboard/*` pages remain until Phase 4 equivalents exist
 BLOCKERS: none (UploadThing token blocks only its manual verification)
 NEXT PHASE: 4 — Customer Storefront

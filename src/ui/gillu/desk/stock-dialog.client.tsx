@@ -1,12 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Field } from "~/app/merchant/merchant-fields.client";
 import { fieldErrors, sendJson } from "~/lib/api-client";
 
 import { Modal } from "./modal.client";
+
+const REASON_LABELS: Record<string, string> = {
+  CORRECTION: "Count correction",
+  DAMAGED: "Damaged or expired",
+  INITIAL: "Opening stock",
+  OTHER: "Something else",
+  RESTOCK: "New stock arrived",
+};
+
+interface Movement {
+  actorName: null | string;
+  availableAfter: number;
+  createdAt: string;
+  delta: number;
+  id: string;
+  note: null | string;
+  reason: string;
+}
 
 const REASONS = [
   ["RESTOCK", "New stock arrived"],
@@ -30,6 +48,31 @@ export function StockDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [movements, setMovements] = useState<Movement[] | null>(null);
+  const variantId = variant?.id;
+
+  useEffect(() => {
+    if (!variantId) {
+      return;
+    }
+    let current = true;
+    setMovements(null);
+    void fetch(`/api/v1/merchant/variants/${variantId}/stock-movements`)
+      .then((response) => response.json() as Promise<{ data?: Movement[] }>)
+      .then((body) => {
+        if (current) {
+          setMovements(body.data ?? []);
+        }
+      })
+      .catch(() => {
+        if (current) {
+          setMovements([]);
+        }
+      });
+    return () => {
+      current = false;
+    };
+  }, [variantId]);
 
   function close() {
     setDelta("");
@@ -120,6 +163,35 @@ export function StockDialog({
           </button>
         </div>
       </form>
+      <h3 className="movements-title" id="movements-title">
+        Recent stock changes
+      </h3>
+      {movements === null ? (
+        <p className="small muted">Loading…</p>
+      ) : movements.length === 0 ? (
+        <p className="small muted">No changes yet.</p>
+      ) : (
+        <ul aria-labelledby="movements-title" className="movements">
+          {movements.map((movement) => (
+            <li key={movement.id}>
+              <strong>
+                {movement.delta > 0 ? `+${movement.delta}` : movement.delta}
+              </strong>{" "}
+              {REASON_LABELS[movement.reason] ?? movement.reason}
+              {movement.note ? ` · ${movement.note}` : ""}
+              <span className="small muted">
+                {" "}
+                → {movement.availableAfter} ·{" "}
+                {new Date(movement.createdAt).toLocaleString("en-IN", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+                {movement.actorName ? ` · ${movement.actorName}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Modal>
   );
 }

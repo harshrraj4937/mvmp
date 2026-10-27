@@ -142,6 +142,63 @@ test("variants and stock", async ({ browser, page }) => {
   ).toHaveText("1");
 });
 
+test("a merchant edits a variant, sees stock history and arranges photos", async ({
+  browser,
+  page,
+}) => {
+  await approvedMerchant(browser, page, `Fix It ${unique()}`);
+  await saveDraft(page, { name: `Pista roll ${unique()}` });
+  await expect(
+    page.getByRole("heading", { name: "A little product polish." }),
+  ).toBeVisible();
+
+  const row = page.getByRole("row", { name: /Default/ });
+  await row.getByRole("button", { name: "Edit" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator("#editPrice")).toHaveValue("1299");
+  await fillFields([[dialog.locator("#editPrice"), "999"]]);
+  await dialog.getByRole("button", { name: "Save variant" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(row).toContainText("₹999");
+
+  await row.getByRole("button", { name: "Adjust stock" }).click();
+  const history = page
+    .getByRole("dialog")
+    .getByRole("list", { name: "Recent stock changes" });
+  await expect(history).toContainText("Opening stock");
+  await expect(history).toContainText("+12");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close dialog" })
+    .click();
+
+  await uploadPixel(page);
+  await page
+    .locator("#imageFile")
+    .setInputFiles("tests/fixtures/images/three-by-two.webp");
+  await page.locator("#imageAlt").fill("Second photo");
+  await page.getByRole("button", { name: "Upload image" }).click();
+  await expect(page.locator(".product-images img")).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Move photo 2 earlier" }).click();
+  await expect(page.locator(".product-images img").first()).toHaveAttribute(
+    "alt",
+    "Second photo",
+  );
+
+  await page
+    .getByLabel("Description of photo 2")
+    .fill("Rolls on a brass plate");
+  await page
+    .getByRole("button", { name: "Save description of photo 2" })
+    .click();
+  await page.reload();
+  await expect(page.locator(".product-images img").nth(1)).toHaveAttribute(
+    "alt",
+    "Rolls on a brass plate",
+  );
+});
+
 test("MRP below price shows a field error", async ({ browser, page }) => {
   await approvedMerchant(browser, page, `Price Check ${unique()}`);
   await saveDraft(page, {

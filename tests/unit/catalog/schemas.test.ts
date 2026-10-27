@@ -145,6 +145,12 @@ describe("imagePatchSchema", () => {
     expect(imagePatchSchema.safeParse({ alt: "   " }).success).toBe(false);
     expect(imagePatchSchema.safeParse({ sortOrder: -1 }).success).toBe(false);
   });
+
+  test("positions are not capped at the image limit (they grow as photos are replaced)", () => {
+    expect(imagePatchSchema.parse({ sortOrder: 12 })).toEqual({
+      sortOrder: 12,
+    });
+  });
 });
 
 describe("productListQuerySchema", () => {
