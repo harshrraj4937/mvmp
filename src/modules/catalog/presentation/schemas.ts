@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import { suggestSlug } from "~/lib/slug";
+
+import { STOCK_REASONS } from "../domain/constants";
+import { parseRupees } from "../domain/money";
+import { normalizeSku } from "../domain/sku";
+
 const categoryFields = z.object({
   isActive: z.boolean(),
   name: z.string().trim().min(2).max(60),
@@ -19,3 +25,148 @@ export const categoryPatchSchema = categoryFields
 
 export type CategoryCreate = z.output<typeof categoryCreateSchema>;
 export type CategoryPatch = z.output<typeof categoryPatchSchema>;
+
+export const MRP_BELOW_PRICE = "Price cannot be higher than the declared MRP.";
+
+const blank = (value: unknown) =>
+  value === undefined ||
+  value === null ||
+  (typeof value === "string" && value.trim() === "");
+
+/** Form fields arrive as strings; numbers are accepted too. */
+const wholeNumber = (min: number, max: number) =>
+  z.preprocess(
+    (value) =>
+      typeof value === "string" && /^\s*-?\d+\s*$/.test(value)
+        ? Number.parseInt(value, 10)
+        : value,
+    z.number().int().min(min).max(max),
+  );
+
+const rupees = z.union([z.string(), z.number()]).transform((value, ctx) => {
+  const paise = parseRupees(String(value));
+  if (paise === null) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Enter a price in rupees, like 399 or 1299.50.",
+    });
+    return z.NEVER;
+  }
+  return paise;
+});
+
+const sku = z.string().transform((value, ctx) => {
+  const normalized = normalizeSku(value);
+  if (normalized === null) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Use 1–40 letters, digits, hyphens or underscores.",
+    });
+    return z.NEVER;
+  }
+  return normalized;
+});
+
+const label = z.string().trim().min(1).max(40);
+
+const variantShape = {
+  heightMm: wholeNumber(1, 2000),
+  label: label.optional(),
+  lengthMm: wholeNumber(1, 2000),
+  mrp: z.preprocess(
+    (value) => (blank(value) ? undefined : value),
+    rupees.optional(),
+  ),
+  price: rupees,
+  sku,
+  weightGrams: wholeNumber(1, 50_000),
+  widthMm: wholeNumber(1, 2000),
+};
+
+const mrpCoversPrice = (variant: { mrp?: null | number; price?: number }) =>
+  variant.mrp === undefined ||
+  variant.mrp === null ||
+  variant.price === undefined ||
+  variant.mrp >= variant.price;
+
+const mrpIssue = { message: MRP_BELOW_PRICE, path: ["mrp"] };
+
+export const variantFieldsSchema = z
+  .object(variantShape)
+  .refine(mrpCoversPrice, mrpIssue);
+
+const initialStock = wholeNumber(0, 100_000);
+
+export const productCreateSchema = z.object({
+  categoryId: z.string().trim().min(1, "Choose a category."),
+  description: z.preprocess(
+    (value) => (blank(value) ? undefined : value),
+    z.string().trim().max(5000).optional(),
+  ),
+  initialStock,
+  name: z.string().trim().min(2).max(120),
+  variant: variantFieldsSchema,
+});
+
+export const productPatchSchema = z
+  .object({
+    categoryId: z.string().trim().min(1, "Choose a category."),
+    // An empty description clears it.
+    description: z.preprocess(
+      (value) => (blank(value) ? null : value),
+      z.string().trim().max(5000).nullable(),
+    ),
+    name: z.string().trim().min(2).max(120),
+    slug: z
+      .string()
+      .transform((value) => suggestSlug(value))
+      .pipe(
+        z.string().min(1, "Use letters or digits in the product URL.").max(80),
+      ),
+  })
+  .partial()
+  .refine(
+    (patch) => Object.keys(patch).length > 0,
+    "Change at least one field.",
+  );
+
+export const variantCreateSchema = z
+  .object({ ...variantShape, initialStock, label })
+  .refine(mrpCoversPrice, mrpIssue);
+
+export const variantPatchSchema = z
+  .object({
+    ...variantShape,
+    isActive: z.boolean(),
+    label,
+    // An empty MRP clears it.
+    mrp: z.preprocess(
+      (value) => (blank(value) ? null : value),
+      rupees.nullable(),
+    ),
+  })
+  .partial()
+  .refine(
+    (patch) => Object.keys(patch).length > 0,
+    "Change at least one field.",
+  )
+  .refine(mrpCoversPrice, mrpIssue);
+
+export const stockAdjustmentSchema = z.object({
+  delta: wholeNumber(-100_000, 100_000).refine(
+    (delta) => delta !== 0,
+    "Enter a change other than 0.",
+  ),
+  note: z.preprocess(
+    (value) => (blank(value) ? undefined : value),
+    z.string().trim().max(200).optional(),
+  ),
+  reason: z.enum(STOCK_REASONS).exclude(["INITIAL"]),
+});
+
+export type ProductCreate = z.output<typeof productCreateSchema>;
+export type ProductPatch = z.output<typeof productPatchSchema>;
+export type StockAdjustment = z.output<typeof stockAdjustmentSchema>;
+export type VariantCreate = z.output<typeof variantCreateSchema>;
+export type VariantFields = z.output<typeof variantFieldsSchema>;
+export type VariantPatch = z.output<typeof variantPatchSchema>;
