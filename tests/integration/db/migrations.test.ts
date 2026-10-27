@@ -31,6 +31,17 @@ test("baseline creates auth and uploads tables and no Polar tables", async () =>
   expect(tables.filter((table) => table.startsWith("polar"))).toEqual([]);
 });
 
+test("Phase 2 adds the merchant tables", async () => {
+  const tables = await listPublicTables(inject("databaseUrl"));
+  expect(tables).toEqual(
+    expect.arrayContaining([
+      "merchants",
+      "merchant_members",
+      "merchant_pickup_locations",
+    ]),
+  );
+});
+
 test("running migrations twice is a no-op", async () => {
   await expect(runMigrations(inject("databaseUrl"))).resolves.toBeUndefined();
 });
