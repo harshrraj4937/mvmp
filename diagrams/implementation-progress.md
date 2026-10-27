@@ -60,6 +60,7 @@ Recorded 2026-10-27 on `gillu/phase-0-1` after `bun install --frozen-lockfile` (
 | `bunx biome check .` | FAIL — 16 errors (formatting + `useImportType`), same Polar files plus `src/lib/auth.ts`, `src/lib/queries/uploads.ts`, `src/ui/components/{product-card,notifications/notification-center,notifications/notifications}.tsx`, `.tests/*` |
 | `bun run knip` | FAIL — unused files `.tests/*`, `src/ui/components/banners/u24.tsx`; unused Polar exports in `src/api/payments/service.ts`; hint: `zod` listed in ignoreDependencies but unused |
 | `bun run build` (placeholder env) | PASS (exit 0). Logged non-fatal errors: GitHub-stars fetch to `regh.reliverse.org` (ENOTFOUND) and `getUsersWithUploads` DB connection refused during build |
+| `bun run test:e2e` (auth smoke, pre-upgrade) | FAIL 1/2 — `sign up, sign in and sign out` fails. Root cause: Polar plugin `createCustomerOnSignUp` calls Polar without a token; `POST /api/auth/sign-up/email` returns HTTP 500 `POLAR_CUSTOMER_CREATION_FAILED … Status 401 Unauthorized`. Masked in the UI because the sign-up and sign-in pages treat better-auth's `{ error }` result as success and redirect anyway. `wrong password does not create a session` passes. |
 
 #### Verification
 Not yet run.

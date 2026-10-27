@@ -1,0 +1,18 @@
+# Throwaway database for end-to-end tests. Data lives in tmpfs and is
+# discarded on `down`; never point this at real data.
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gillu_test
+      POSTGRES_PASSWORD: gillu_test
+      POSTGRES_USER: gillu_test
+    healthcheck:
+      interval: 2s
+      retries: 30
+      test: ["CMD-SHELL", "pg_isready -U gillu_test -d gillu_test"]
+      timeout: 3s
+    ports:
+      - "127.0.0.1:54329:5432"
+    tmpfs:
+      - /var/lib/postgresql/data

@@ -7,6 +7,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --turbopack",
+    "start": "next start",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:auth": "bun src/lib/auth-db.ts",
@@ -17,7 +18,8 @@
     "lint": "eslint . && biome check .",
     "knip": "knip",
     "test": "vitest run",
-    "test:unit": "vitest run --project unit"
+    "test:unit": "vitest run --project unit",
+    "test:e2e": "bun scripts/e2e.ts"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
@@ -73,6 +75,7 @@
     "@biomejs/biome": "1.9.4",
     "@eslint-react/eslint-plugin": "^1.49.0",
     "@eslint/js": "^9.26.0",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.1.5",
     "@total-typescript/ts-reset": "^0.6.1",
     "@types/bun": "^1.2.12",
