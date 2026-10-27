@@ -1,0 +1,12 @@
+flowchart TD
+    A["Merchant order confirmed"] --> B["Merchant dispatches"]
+    B --> C["Delivered"]
+    C --> D{"Return or dispute?"}
+    D -->|Yes| E["Hold + investigate"]
+    D -->|No| F["Wait for risk window"]
+    F --> G{"Funds reconciled?"}
+    G -->|No| H["Await provider remittance"]
+    H --> G
+    G -->|Yes| I["Settlement eligible"]
+    I --> J["Payout initiated"]
+    J --> K["Payout confirmed"]

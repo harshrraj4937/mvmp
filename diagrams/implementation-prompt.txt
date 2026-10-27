@@ -1,0 +1,1721 @@
+# PROJECT GILLU — MULTI-VENDOR MARKETPLACE MVP
+
+## ROLE
+
+You are the principal software architect, senior full-stack engineer,
+backend engineer, database engineer, DevOps engineer, and QA engineer
+responsible for building Gillu.
+
+Your task is to transform the existing Relivator starter repository into
+a functional, tested, multi-vendor Indian e-commerce marketplace.
+
+You must implement the project incrementally.
+
+Do not attempt a complete rewrite.
+
+Do not create disconnected mockup pages.
+
+Do not implement everything in one enormous change.
+
+Every phase must result in functioning, tested software.
+
+============================================================
+1. PROJECT CONTEXT
+============================================================
+
+PROJECT NAME:
+Gillu
+
+PROJECT TYPE:
+Multi-vendor e-commerce marketplace for India.
+
+STARTER REPOSITORY:
+https://github.com/reliverse/relivator
+
+EXISTING LANDING PAGE:
+https://gillu-festive-haat.warmsiren2.chatgpt.site/
+
+PAYMENT PROVIDER:
+Cashfree
+
+SHIPPING PROVIDER:
+Shiprocket
+
+SHIPROCKET SANDBOX:
+https://sandbox.shiprocket.in/apis/
+
+SHIPROCKET API DOCUMENTATION:
+https://apidocs.shiprocket.in/
+
+CASHFREE DOCUMENTATION:
+https://www.cashfree.com/docs/
+
+Gillu allows multiple independent merchants to sell products
+through a common storefront.
+
+The initial product categories focus on Indian traditional,
+regional, cultural, and festive products.
+
+The platform has three user interfaces:
+
+1. Customer storefront
+2. Merchant dashboard
+3. Marketplace administration dashboard
+
+A merchant can register, publish products, receive orders,
+prepare packages, and manage shipments.
+
+A customer can browse products from multiple merchants,
+add products to a cart, provide an address, and purchase
+using prepaid payments or Cash on Delivery.
+
+Cashfree processes prepaid payments.
+
+Shiprocket manages courier availability, shipment creation,
+AWB generation, pickup requests, and shipping tracking.
+
+Gillu owns the authoritative marketplace order records.
+
+============================================================
+2. FINALIZED TECHNOLOGY STACK
+============================================================
+
+FRONTEND
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+
+BACKEND
+- Next.js server-side route handlers and application services
+- TypeScript
+- Modular monolith architecture
+
+AUTHENTICATION
+- Better Auth
+- Google OAuth / SSO
+- Server-side authorization
+
+DATABASE
+- PostgreSQL
+- Drizzle ORM
+- Drizzle Kit migrations
+
+ASYNC PROCESSING
+- Redis
+- BullMQ
+- Dedicated payment worker
+- Dedicated shipping worker
+- Transactional outbox dispatcher
+
+PAYMENTS
+- Cashfree Payment Gateway
+- Sandbox first
+- Verified webhooks
+- Payment reconciliation
+
+LOGISTICS
+- Shiprocket API
+- Sandbox first
+- Courier serviceability
+- Shipping estimates
+- Order/shipment registration
+- AWB assignment
+- Label generation
+- Pickup scheduling
+- Shipment tracking
+
+FILE STORAGE
+- Reuse a suitable existing storage integration
+- Prefer S3-compatible object storage for production
+- Never store product image binaries inside PostgreSQL
+
+TESTING
+- Vitest for unit tests
+- Vitest + Testcontainers for database integration tests
+- Playwright for end-to-end tests
+- Provider API mocks for deterministic CI testing
+- Separate Cashfree and Shiprocket sandbox verification
+
+DEPLOYMENT
+- Docker
+- Docker Compose
+- Nginx reverse proxy
+- PostgreSQL persistent volume
+- Redis
+- Environment-based configuration
+
+OBSERVABILITY
+- Structured JSON logs
+- Request and correlation IDs
+- Worker error reporting
+- Sentry when configured
+
+IMPORTANT:
+
+Use the dependency versions already present in Relivator unless
+a change is necessary for security, compatibility, or correctness.
+
+Do not upgrade major framework versions without justification.
+
+============================================================
+3. EXPLICIT TECHNOLOGY DECISIONS
+============================================================
+
+ORM:
+DRIZZLE
+
+Do not migrate to Prisma or TypeORM.
+
+DATABASE:
+POSTGRESQL
+
+APPLICATION ARCHITECTURE:
+MODULAR MONOLITH
+
+ASYNC WORKERS:
+SEPARATE DEPLOYABLE PROCESSES
+
+PAYMENTS:
+CASHFREE
+
+SHIPPING:
+SHIPROCKET
+
+AUTH:
+BETTER AUTH + GOOGLE
+
+POLAR:
+REMOVE
+
+Relivator currently has a Polar subscription integration.
+
+We are NOT going to use Polar.
+
+Inspect all Polar integrations before removing them.
+
+Remove or disable:
+- Polar checkout
+- Subscription billing
+- Subscription-specific API routes
+- Polar plugins
+- Polar configuration
+- Unused Polar dependencies
+- Unused environment variables
+
+Preserve working Better Auth authentication.
+
+Do not break authentication while removing Polar.
+
+Do not introduce Stripe, Razorpay, or another payment provider.
+
+============================================================
+4. ARCHITECTURE PRINCIPLES
+============================================================
+
+Follow these principles:
+
+1. Separation of concerns
+2. Domain-driven module boundaries
+3. Single responsibility principle
+4. Dependency inversion
+5. Explicit service interfaces
+6. High cohesion within modules
+7. Low coupling between modules
+8. Server-side authorization
+9. Database transaction safety
+10. Idempotent external operations
+11. Durable asynchronous events
+12. Test-driven development for critical business logic
+13. Observable error handling
+14. Minimal necessary abstraction
+15. Incremental delivery
+
+Avoid overengineering.
+
+Do not create microservices for every domain.
+
+Do not add Kubernetes, Kafka, Elasticsearch, or other infrastructure
+until a real requirement justifies them.
+
+============================================================
+5. MODULAR MONOLITH DESIGN
+============================================================
+
+Organize the application into domain modules.
+
+REQUIRED MODULES:
+
+identity/
+merchants/
+catalog/
+inventory/
+cart/
+checkout/
+orders/
+payments/
+fulfillment/
+finance/
+reviews/
+notifications/
+
+Each module should clearly own:
+
+- Business rules
+- Validation
+- Application services
+- Data-access operations
+- Publicly exposed internal interfaces
+- Relevant tests
+
+Recommended internal layering:
+
+domain/
+  entities
+  value objects
+  business rules
+  state transitions
+
+application/
+  use cases
+  commands
+  queries
+  application services
+
+infrastructure/
+  database repositories
+  external provider adapters
+  background jobs
+
+presentation/
+  route handlers
+  DTOs
+  validation
+  UI integration
+
+Apply this layering pragmatically.
+
+Do not create dozens of empty interfaces or unnecessary
+repository abstractions.
+
+BUSINESS RULES SHOULD NOT LIVE INSIDE REACT COMPONENTS.
+
+React components must not directly mutate database tables.
+
+API handlers should remain thin.
+
+Example:
+
+HTTP Route
+    -> Validate request
+    -> Authenticate user
+    -> Authorize operation
+    -> Call application service
+    -> Service executes business rules
+    -> Repository persists transaction
+    -> Return validated response
+
+============================================================
+6. MODULE OWNERSHIP RULES
+============================================================
+
+IDENTITY MODULE
+Owns:
+- User authentication
+- Session validation
+- User permissions
+
+MERCHANT MODULE
+Owns:
+- Merchant onboarding
+- Merchant profiles
+- Merchant memberships
+- Pickup addresses
+- Merchant approval status
+
+CATALOG MODULE
+Owns:
+- Products
+- Categories
+- Product images
+- Product variants
+- Publication status
+
+INVENTORY MODULE
+Owns:
+- Available stock
+- Reserved stock
+- Stock adjustments
+- Inventory reservations
+
+ORDER MODULE
+Owns:
+- Parent customer orders
+- Merchant-specific orders
+- Order items
+- Order transitions
+- Cancellation workflow
+
+PAYMENT MODULE
+Owns:
+- Payment attempts
+- Provider transaction references
+- Payment confirmation
+- Refund processing
+
+FULFILLMENT MODULE
+Owns:
+- Packaging status
+- Shipment registration
+- Courier assignment
+- Shipping status
+- Tracking history
+
+FINANCE MODULE
+Owns:
+- Recorded commissions
+- Shipping cost snapshots
+- Merchant payables
+- Payment/settlement reconciliation records
+
+REVIEW MODULE
+Owns:
+- Verified product reviews
+- Product ratings
+- Merchant responses
+
+NOTIFICATION MODULE
+Owns:
+- New-order notifications
+- Shipment notifications
+- Customer notifications
+
+Do not allow modules to change other modules'
+business state through uncontrolled database updates.
+
+Use explicit application services and event handlers.
+
+============================================================
+7. USER ROLES
+============================================================
+
+Implement three roles:
+
+CUSTOMER
+MERCHANT
+ADMIN
+
+One authenticated user may be both a customer and merchant.
+
+Merchant ownership must be represented explicitly.
+
+Do not assume every merchant account is associated with
+exactly one user forever.
+
+Support merchant membership records.
+
+Enforce authorization on the server.
+
+A merchant must not be able to access another merchant's:
+- Products
+- Inventory
+- Customer information
+- Orders
+- Sales data
+- Shipping labels
+- Reviews dashboard
+- Financial records
+
+Test these restrictions.
+
+============================================================
+8. MERCHANT REGISTRATION
+============================================================
+
+Merchant onboarding fields:
+
+- Store name
+- Store slug
+- Description
+- Owner/contact name
+- Email
+- Phone
+- Business address
+- Pickup address
+- Return address
+- Pickup postal code
+- Store logo
+- Business identification fields where applicable
+
+Merchant registration states:
+
+DRAFT
+SUBMITTED
+APPROVED
+REJECTED
+SUSPENDED
+
+The administrator approves merchant onboarding.
+
+Merchants cannot publish products before approval.
+
+Merchant pickup addresses must remain associated with the
+correct merchant.
+
+Do not assume every merchant requires the same statutory
+registration fields; flag unverified compliance requirements
+for confirmation.
+
+============================================================
+9. PRODUCT MANAGEMENT
+============================================================
+
+Merchants must be able to:
+
+- Create products
+- Edit products
+- Upload product images
+- Assign categories
+- Configure variants where needed
+- Set selling price
+- Record declared MRP where applicable
+- Set stock quantity
+- Set SKU
+- Set weight
+- Set package dimensions
+- Publish products
+- Unpublish products
+- Archive products
+
+Product states:
+
+DRAFT
+PENDING_APPROVAL
+PUBLISHED
+UNPUBLISHED
+ARCHIVED
+
+Required product fields:
+
+id
+merchant_id
+name
+slug
+description
+category_id
+price_paise
+declared_mrp_paise
+currency
+sku
+weight
+dimensions
+status
+created_at
+updated_at
+
+Do not conflate the legally declared MRP with Gillu's
+shipping-inclusive selling price.
+
+Use proper image storage.
+
+Only published and available products should be shown
+as purchasable on the storefront.
+
+============================================================
+10. GILLU CUSTOMER STOREFRONT
+============================================================
+
+Integrate the existing Gillu festive landing page.
+
+Preserve the traditional Indian visual identity.
+
+The landing page must become part of the actual marketplace.
+
+Product sections must load products from PostgreSQL.
+
+If the existing hosted page's source code and assets
+are unavailable, report that dependency.
+
+Do not falsely claim it was integrated.
+
+CUSTOMER FEATURES:
+
+- Homepage
+- Product listing
+- Product details
+- Merchant shop pages
+- Category filters
+- Search
+- Shopping cart
+- Customer authentication
+- Address management
+- Checkout
+- Order history
+- Shipment tracking
+- Product reviews
+
+Products from multiple sellers should appear
+in the same marketplace.
+
+The customer should not need separate accounts for each seller.
+
+============================================================
+11. MULTI-MERCHANT ORDER MODEL
+============================================================
+
+Gillu supports multi-merchant carts.
+
+A customer can add products from Merchant A and Merchant B
+to the same cart.
+
+At checkout:
+
+1. Create one parent customer order.
+2. Create one merchant-specific suborder per merchant.
+3. Copy the correct items into each merchant suborder.
+4. Store all price snapshots.
+5. Reserve inventory.
+6. Associate each merchant suborder with its seller.
+7. Process the customer payment according to payment method.
+8. Allow independent fulfillment of each merchant suborder.
+
+Example:
+
+Parent Order GIL-1001
+
+Merchant Order GIL-1001-A
+  Merchant: A
+  Product: Cashews
+  Quantity: 2
+
+Merchant Order GIL-1001-B
+  Merchant: B
+  Product: Handicraft
+  Quantity: 1
+
+Each merchant sees only their own suborder.
+
+Each merchant has independent shipping and tracking.
+
+The customer sees the complete parent order.
+
+============================================================
+12. CHECKOUT BUSINESS RULES
+============================================================
+
+CHECKOUT REQUIREMENTS:
+
+- Customer authentication
+- Saved or newly entered shipping address
+- Server-side product price validation
+- Inventory availability
+- Merchant verification
+- Shipping serviceability
+- Payment method selection
+- Order summary
+- Atomic inventory reservation
+- Idempotent order creation
+
+SUPPORTED PAYMENT METHODS:
+
+PREPAID
+COD
+
+MULTI-SELLER COD IS ALLOWED.
+
+For COD orders containing products from multiple sellers:
+
+- Each merchant shipment has its own COD collection amount.
+- The sum of the parcel-level COD amounts must equal
+  the customer order's payable amount.
+- The customer must see that separate parcels will require
+  separate payments.
+- Shipping/provider eligibility must be verified.
+- Seller-specific shipment IDs must not be mixed.
+
+No double charging.
+
+No duplicate order creation.
+
+No negative inventory.
+
+============================================================
+13. SHIPPING-INCLUDING PRODUCT PRICING
+============================================================
+
+BUSINESS DECISION:
+
+Gillu intends to include estimated delivery costs within
+the customer-facing product selling price.
+
+The goal is to present predictable all-inclusive pricing.
+
+HOWEVER:
+
+The final pricing formula and merchant unit economics
+are intentionally deferred until after MVP validation
+and interviews with real sellers.
+
+Therefore:
+
+- Store seller base price separately where applicable.
+- Store advertised selling price.
+- Store courier estimate.
+- Store actual courier charge.
+- Store payment and COD fees when known.
+- Keep per-merchant fee configuration extensible.
+- Snapshot financial values when an order is placed.
+- Do not invent final commission percentages.
+- Do not invent arbitrary merchant deductions.
+- Do not implement automated merchant payouts yet.
+- Do not treat product MRP as a configurable shipping surcharge.
+
+For sandbox testing, allow explicitly configured demo
+pricing policies and seeded test data.
+
+Before enabling production checkout, require a validated
+pricing configuration and relevant compliance checks.
+
+The customer must not unexpectedly receive an additional
+delivery charge after placing an order.
+
+============================================================
+14. MERCHANT FULFILLMENT RESPONSIBILITY
+============================================================
+
+BUSINESS DECISION:
+
+Approved merchants are contractually expected to fulfill
+valid confirmed orders.
+
+They must notify Gillu of planned unavailability.
+
+Do not require an unnecessary "accept order" button
+to establish the existence of a valid customer order.
+
+Instead:
+
+- Order becomes confirmed after the appropriate
+  prepaid verification or COD validation.
+- Merchant receives a notification.
+- Merchant acknowledges or starts processing.
+- Merchant packs the product.
+- Merchant marks package ready.
+- Shipping workflow begins.
+
+Keep configurable acknowledgment and dispatch deadlines.
+
+Add:
+- Unacknowledged-order alerts
+- Delayed-dispatch alerts
+- Merchant availability settings
+- Admin escalation
+
+Do not implement financial penalties until the
+merchant contract and penalty policy are finalized.
+
+============================================================
+15. PAYMENT INTEGRATION — CASHFREE
+============================================================
+
+Use Cashfree for prepaid checkout.
+
+Create a payment provider adapter.
+
+Suggested interface:
+
+PaymentProvider:
+- createPaymentSession()
+- getPaymentStatus()
+- verifyWebhook()
+- requestRefund()
+- getRefundStatus()
+
+Implement:
+
+CashfreePaymentProvider
+MockPaymentProvider
+
+CASHFREE REQUIREMENTS:
+
+- Sandbox credentials
+- Server-side payment session creation
+- Payment attempt persistence
+- Webhook signature verification
+- Raw webhook body handling
+- Server-side payment verification
+- Payment reconciliation
+- Retry-safe processing
+- Duplicate webhook protection
+- Failed payment handling
+- Pending payment handling
+- Refund records
+
+Never confirm a prepaid order based only on a
+frontend callback.
+
+A payment must be verified before fulfillment is authorized.
+
+Do not expose Cashfree secrets in client-side code.
+
+CASHFREE WORKER:
+
+Use a dedicated worker process for:
+- Payment reconciliation
+- Pending status checks
+- Refund processing
+- Failed-job retries
+
+Initial payment-session creation may be synchronous through
+the server-side adapter because checkout requires the result
+immediately.
+
+The worker does not own the authoritative customer order.
+
+============================================================
+16. COD BUSINESS LOGIC
+============================================================
+
+COD orders must not be marked PREPAID or PAID at placement.
+
+COD states must distinguish:
+
+- Order confirmed
+- Shipment created
+- Shipped
+- Delivered
+- Collection reported
+- Remittance pending
+- Remittance received
+- Reconciled
+
+Do not equate delivery with money received.
+
+Store:
+- COD amount
+- Merchant suborder ID
+- Shipment ID
+- Shiprocket reference
+- Remittance reference when available
+
+Detailed seller settlement rules are out of scope for MVP.
+
+Do not implement seller withdrawals or automatic payouts.
+
+============================================================
+17. SHIPPING INTEGRATION — SHIPROCKET
+============================================================
+
+Use Shiprocket sandbox first.
+
+Create a shipping provider adapter.
+
+Suggested interface:
+
+ShippingProvider:
+- authenticate()
+- checkServiceability()
+- getCourierRates()
+- createShippingOrder()
+- assignCourier()
+- generateLabel()
+- requestPickup()
+- getTracking()
+- cancelShipment()
+
+Implement:
+
+ShiprocketShippingProvider
+MockShippingProvider
+
+PLATFORM ACCOUNT MODEL:
+
+Initially plan for platform-managed Shiprocket integration
+with merchant-specific pickup locations.
+
+Verify that Shiprocket account permissions and agreement
+support this model before production use.
+
+Do not use the wrong merchant pickup address.
+
+Make the integration capable of supporting different
+shipping account configurations later.
+
+SHIPPING WORKFLOW:
+
+1. Merchant suborder is confirmed.
+2. Merchant begins packaging.
+3. Merchant marks package ready.
+4. Shipping job is created.
+5. Shiprocket order is registered.
+6. Courier availability is checked.
+7. Courier is assigned.
+8. AWB is generated.
+9. Label is generated.
+10. Merchant requests pickup.
+11. Courier collects parcel.
+12. Shipment tracking is synchronized.
+13. Shipment reaches delivered, failed, or returned state.
+14. Customer and merchant dashboards update.
+
+Store:
+
+- Internal shipment ID
+- Merchant order ID
+- Pickup location
+- Shiprocket order ID
+- Shiprocket shipment ID
+- AWB
+- Courier ID
+- Shipment status
+- Tracking history
+- Estimated shipping charge
+- Actual shipping charge when available
+- Label reference
+
+Implement retry-safe shipping operations.
+
+If Shiprocket succeeds but the HTTP response times out,
+reconcile the external state before attempting to
+create another shipment.
+
+Do not fabricate sandbox capabilities.
+
+============================================================
+18. ORDER AND SHIPPING STATES
+============================================================
+
+Do not use one status field for everything.
+
+ORDER STATUS:
+PENDING_PAYMENT
+CONFIRMED
+PROCESSING
+PARTIALLY_FULFILLED
+COMPLETED
+CANCELED
+
+PAYMENT STATUS:
+UNPAID
+PENDING
+PAID
+FAILED
+REFUND_PENDING
+REFUNDED
+
+PAYMENT METHOD:
+PREPAID
+COD
+
+FULFILLMENT STATUS:
+NEW
+ACKNOWLEDGED
+PACKING
+READY_FOR_PICKUP
+HANDED_TO_COURIER
+FULFILLED
+CANCELED
+
+SHIPMENT STATUS:
+NOT_CREATED
+CREATED
+AWB_ASSIGNED
+PICKUP_REQUESTED
+PICKED_UP
+IN_TRANSIT
+OUT_FOR_DELIVERY
+DELIVERED
+DELIVERY_FAILED
+RTO_INITIATED
+RTO_DELIVERED
+CANCELED
+
+These are Gillu's internal normalized states.
+
+Do not assume they are identical to Shiprocket's
+actual provider status strings.
+
+Create a provider-to-domain status mapping layer.
+
+Record status history.
+
+Reject invalid transitions.
+
+============================================================
+19. MERCHANT DASHBOARD
+============================================================
+
+Create a functional dashboard.
+
+REQUIRED PAGES:
+
+/merchant/onboarding
+/merchant/dashboard
+/merchant/profile
+/merchant/products
+/merchant/products/new
+/merchant/products/[id]/edit
+/merchant/inventory
+/merchant/orders
+/merchant/orders/[id]
+/merchant/shipments
+/merchant/shipments/[id]
+/merchant/reviews
+/merchant/settings/shipping
+
+DASHBOARD OVERVIEW:
+
+- Total products
+- Published products
+- Available stock
+- New orders
+- Orders requiring packing
+- Pickup pending
+- In-transit shipments
+- Delivered shipments
+- Canceled/returned shipments
+- Gross sales
+- Payment method distribution
+
+Use real database values.
+
+Clearly mark demo data where used.
+
+The dashboard must allow merchants to:
+
+- Manage products
+- Update inventory
+- View order details
+- See customer delivery details needed for fulfillment
+- Prepare packages
+- Generate labels
+- Request pickup
+- View tracking events
+- View customer reviews
+
+============================================================
+20. CUSTOMER REVIEWS
+============================================================
+
+Customers can review products only when they are eligible
+based on an authenticated purchase.
+
+For MVP:
+
+- Rating from 1 to 5
+- Text review
+- Review date
+- Verified purchase indicator
+- Product average rating
+- Rating count
+- Merchant review listing
+
+Prevent duplicate reviews for the same eligible order item.
+
+Do not let merchants delete negative customer reviews.
+
+Support basic admin moderation.
+
+============================================================
+21. DATABASE REQUIREMENTS
+============================================================
+
+Use PostgreSQL as the source of truth.
+
+Organize Drizzle schema files by module.
+
+Suggested tables:
+
+AUTH:
+- Existing Better Auth tables
+
+MERCHANT:
+- merchants
+- merchant_members
+- merchant_pickup_locations
+
+CATALOG:
+- categories
+- products
+- product_variants
+- product_images
+
+INVENTORY:
+- inventory
+- inventory_reservations
+- inventory_movements
+
+CART:
+- carts
+- cart_items
+
+ORDERS:
+- orders
+- merchant_orders
+- order_items
+- order_status_history
+- order_address_snapshots
+
+PAYMENTS:
+- payment_attempts
+- payment_provider_events
+- refunds
+
+SHIPPING:
+- shipments
+- shipment_tracking_events
+- shipping_quotes
+
+FINANCE:
+- merchant_fee_settings
+- merchant_payables
+- provider_remittances
+
+REVIEWS:
+- product_reviews
+- merchant_review_replies
+
+INFRASTRUCTURE:
+- idempotency_keys
+- outbox_events
+- background_job_attempts
+
+Use:
+- Primary keys
+- Foreign keys
+- Unique constraints
+- Indexes
+- Transactional writes
+- Check constraints where applicable
+- Migration history
+- Audit timestamps
+
+Store monetary amounts as integer paise.
+
+Do not use floating-point arithmetic for finance.
+
+Do not drop or reset existing production data.
+
+Use generated, version-controlled migrations.
+
+============================================================
+22. API DESIGN
+============================================================
+
+Prefer REST APIs under /api/v1 for Gillu business operations.
+
+Reuse existing Better Auth routes for authentication.
+
+CUSTOMER:
+
+GET    /api/v1/products
+GET    /api/v1/products/:slug
+GET    /api/v1/shops/:slug
+
+GET    /api/v1/cart
+POST   /api/v1/cart/items
+PATCH  /api/v1/cart/items/:id
+DELETE /api/v1/cart/items/:id
+
+GET    /api/v1/me/addresses
+POST   /api/v1/me/addresses
+
+POST   /api/v1/checkout/quote
+POST   /api/v1/checkout/orders
+POST   /api/v1/orders/:id/payment-session
+
+GET    /api/v1/orders
+GET    /api/v1/orders/:id
+GET    /api/v1/orders/:id/tracking
+
+MERCHANT:
+
+POST   /api/v1/merchant/onboarding
+GET    /api/v1/merchant/profile
+PATCH  /api/v1/merchant/profile
+
+GET    /api/v1/merchant/products
+POST   /api/v1/merchant/products
+PATCH  /api/v1/merchant/products/:id
+
+GET    /api/v1/merchant/orders
+GET    /api/v1/merchant/orders/:id
+
+POST   /api/v1/merchant/orders/:id/acknowledge
+POST   /api/v1/merchant/orders/:id/start-packing
+POST   /api/v1/merchant/orders/:id/ready
+
+POST   /api/v1/merchant/orders/:id/request-pickup
+
+GET    /api/v1/merchant/shipments
+GET    /api/v1/merchant/shipments/:id
+
+GET    /api/v1/merchant/reviews
+
+ADMIN:
+
+GET    /api/v1/admin/merchants
+POST   /api/v1/admin/merchants/:id/approve
+POST   /api/v1/admin/merchants/:id/reject
+
+GET    /api/v1/admin/orders
+GET    /api/v1/admin/integrations
+
+WEBHOOKS:
+
+POST /api/webhooks/cashfree
+POST /api/webhooks/shiprocket
+
+Webhook endpoints must validate provider authenticity
+using methods supported by the official provider documentation.
+
+Use typed DTOs and runtime validation.
+
+Return consistent error responses.
+
+============================================================
+23. BACKGROUND JOB ARCHITECTURE
+============================================================
+
+Use Redis + BullMQ.
+
+Create dedicated job processors for:
+
+PAYMENT:
+- Payment reconciliation
+- Pending payment expiration
+- Refund processing
+
+SHIPPING:
+- Shipment creation
+- Courier assignment
+- Pickup requests
+- Tracking synchronization
+
+NOTIFICATIONS:
+- New order
+- Order dispatch
+- Delivery updates
+
+Use a transactional outbox.
+
+Database transaction:
+- Update business state
+- Insert outbox event
+- Commit
+
+Outbox dispatcher:
+- Read pending events
+- Publish BullMQ job
+- Track dispatch safely
+
+Workers:
+- Validate event
+- Process idempotently
+- Persist result
+- Retry safe failures
+- Report permanent failures
+
+Do not assume queues provide exactly-once external execution.
+
+Persist enough information to reconcile unknown provider outcomes.
+
+============================================================
+24. DOCKER DEPLOYMENT
+============================================================
+
+Create or update Docker configuration for:
+
+gillu-web
+gillu-payment-worker
+gillu-shipping-worker
+gillu-outbox-dispatcher
+gillu-postgres
+gillu-redis
+gillu-nginx
+
+Use one-shot migration execution during deployment.
+
+REQUIREMENTS:
+
+- Multi-stage builds
+- Environment variables
+- Non-root runtime where practical
+- Named PostgreSQL volume
+- Health checks
+- Service readiness
+- Internal Docker networking
+- Graceful worker shutdown
+- Structured logs
+- No publicly exposed PostgreSQL/Redis
+- No hardcoded secrets
+
+Preserve compatibility with Next.js standalone output.
+
+Document local and production workflows separately.
+
+============================================================
+25. TESTING STRATEGY
+============================================================
+
+UNIT TESTS — VITEST
+
+Test:
+- Product validation
+- Money calculations
+- Inventory reservation logic
+- Order status transitions
+- Commission configuration snapshots
+- COD amount allocation
+- Shipping status mapping
+
+DATABASE INTEGRATION TESTS
+
+Use a real isolated PostgreSQL database with Testcontainers
+or equivalent reproducible infrastructure.
+
+Test:
+- Foreign keys
+- Unique constraints
+- Transactions
+- Concurrent inventory reservations
+- Order creation
+- Idempotency
+- Outbox persistence
+- Cross-merchant query isolation
+
+PROVIDER INTEGRATION TESTS
+
+Test:
+- Cashfree success
+- Cashfree failure
+- Cashfree pending payment
+- Invalid payment webhook
+- Duplicate payment webhook
+
+- Shiprocket serviceability
+- Shipment creation
+- Courier assignment
+- Pickup failure
+- Tracking updates
+- Shipment creation timeout
+- Duplicate shipping jobs
+
+Use provider mocks for deterministic CI tests.
+
+Run separate sandbox verification when credentials
+and supported sandbox workflows are available.
+
+E2E TESTS — PLAYWRIGHT
+
+Test:
+
+SCENARIO A:
+Merchant signs in, registers, gets approved,
+creates product, publishes product.
+
+SCENARIO B:
+Customer sees product, logs in, adds it to cart,
+saves address, places prepaid order.
+
+SCENARIO C:
+Cashfree sandbox payment succeeds,
+merchant receives confirmed order.
+
+SCENARIO D:
+Merchant packs product,
+generates shipping label,
+requests Shiprocket pickup,
+and sees tracking.
+
+SCENARIO E:
+Customer places COD order,
+merchant receives COD amount and shipping details.
+
+SCENARIO F:
+Customer purchases products from two merchants.
+Separate merchant suborders and shipments are created.
+
+SCENARIO G:
+Merchant A cannot access Merchant B's products or orders.
+
+SCENARIO H:
+Two customers purchase the last available product.
+Only one transaction succeeds.
+
+SCENARIO I:
+Duplicate webhooks do not create duplicate orders,
+payments, or shipments.
+
+SCENARIO J:
+Customer reviews an eligible delivered product.
+
+============================================================
+26. IMPLEMENTATION PHASES
+============================================================
+
+Implement in this exact order unless the repository audit
+reveals a technical dependency requiring adjustment.
+
+PHASE 0 — REPOSITORY AUDIT
+
+- Inspect Relivator
+- Inspect git status and preserve existing changes
+- Identify auth and DB setup
+- Identify Polar dependencies
+- Identify reusable components
+- Identify existing test infrastructure
+- Document technical risks
+
+Deliver:
+docs/architecture.md
+docs/implementation-plan.md
+
+PHASE 1 — FOUNDATION
+
+- Safely remove Polar
+- Set up PostgreSQL
+- Validate Drizzle
+- Configure Docker
+- Configure Vitest
+- Configure Playwright
+- Create migration workflow
+- Verify production build
+
+Deliver:
+Running application with working authentication.
+
+PHASE 2 — MERCHANT AUTHENTICATION
+
+- Google OAuth
+- Merchant membership
+- Merchant onboarding
+- Role authorization
+- Merchant approval
+- Merchant profile
+- Pickup addresses
+
+Deliver:
+Merchant can register and access an approved dashboard.
+
+PHASE 3 — PRODUCT MANAGEMENT
+
+- Categories
+- Product CRUD
+- Product images
+- Product status
+- Inventory
+- Stock adjustment
+- Merchant product management UI
+
+Deliver:
+Approved merchant can publish real products.
+
+PHASE 4 — CUSTOMER STOREFRONT
+
+- Integrate Gillu landing-page source
+- Fetch products from DB
+- Product detail pages
+- Merchant shop pages
+- Search and filters
+- Cart
+- Customer login
+
+Deliver:
+Products from multiple merchants are visible and purchasable
+up to the checkout entry point.
+
+PHASE 5 — INTERNAL ORDER SYSTEM
+
+- Customer addresses
+- Checkout validation
+- Multi-merchant suborders
+- Inventory reservations
+- Order lifecycle
+- Idempotency
+- Merchant order notifications
+
+Deliver:
+Customer can place an internal test order without any
+external payment provider.
+
+PHASE 6 — CASHFREE
+
+- Payment adapter
+- Sandbox checkout
+- Verified webhooks
+- Payment state reconciliation
+- COD processing
+- Payment worker
+
+Deliver:
+Prepaid and COD checkout workflows function correctly
+within their tested environments.
+
+PHASE 7 — SHIPROCKET
+
+- Shipping adapter
+- Pickup location validation
+- Courier serviceability
+- Shipping order creation
+- AWB
+- Labels
+- Pickup
+- Tracking
+- Shipping worker
+
+Deliver:
+Merchant can prepare and dispatch orders using the
+supported Shiprocket sandbox workflow.
+
+PHASE 8 — MERCHANT DASHBOARD COMPLETION
+
+- New orders
+- Packaging workflow
+- Shipment timeline
+- Shipping exceptions
+- Basic sales metrics
+- Reviews
+- Notifications
+
+Deliver:
+Merchant can operate fulfillment from the dashboard.
+
+PHASE 9 — E2E HARDENING
+
+- Full Playwright journeys
+- Security tests
+- Database concurrency tests
+- Provider failure tests
+- Responsive UI verification
+- Deployment smoke tests
+- Documentation cleanup directly relevant to release
+
+Deliver:
+A verified end-to-end marketplace MVP.
+
+============================================================
+27. OUT OF SCOPE
+============================================================
+
+Do not implement:
+
+- Polar subscriptions
+- Stripe
+- Razorpay
+- Paid merchant advertising
+- AI recommendations
+- Advanced seller analytics
+- Automatic seller payouts
+- Final commission optimization
+- Dynamic commission algorithms
+- Advanced returns marketplace
+- Loyalty systems
+- Customer wallet
+- Coupons and promotional engine
+- Multi-currency
+- Native mobile applications
+- Kubernetes
+- Independent payment/logistics microservices with
+  separate databases
+
+Build only the foundation required to support these later.
+
+============================================================
+28. REQUIRED DOCUMENTATION
+============================================================
+
+Maintain:
+
+docs/architecture.md
+docs/database-design.md
+docs/api-contracts.md
+docs/merchant-workflow.md
+docs/order-lifecycle.md
+docs/integrations/cashfree.md
+docs/integrations/shiprocket.md
+docs/testing.md
+docs/decisions.md
+docs/implementation-progress.md
+
+Use Mermaid diagrams where helpful.
+
+Document:
+- Module responsibilities
+- Database relationships
+- API contracts
+- Worker events
+- Deployment configuration
+- Environment variables
+- Known limitations
+
+============================================================
+29. PHASE COMPLETION RULE
+============================================================
+
+A phase is complete only when:
+
+[ ] Code is implemented.
+[ ] Relevant database migrations exist.
+[ ] Unit tests pass.
+[ ] Integration tests pass.
+[ ] Relevant Playwright tests pass.
+[ ] Type checking passes.
+[ ] Lint checks pass.
+[ ] Production build passes.
+[ ] Security boundaries are verified.
+[ ] Documentation is updated.
+[ ] No hardcoded external-provider success is presented as real.
+[ ] No required acceptance criterion is silently skipped.
+
+After every phase, report:
+
+PHASE:
+STATUS:
+FEATURES IMPLEMENTED:
+FILES CHANGED:
+TESTS EXECUTED:
+TEST RESULTS:
+KNOWN ISSUES:
+BLOCKERS:
+NEXT PHASE:
+
+If a provider cannot be tested due to missing credentials,
+sandbox limitations, or account permissions:
+
+- Mark that part as BLOCKED.
+- Implement isolated provider mocks.
+- Run contract and integration tests.
+- Clearly state what was and was not tested.
+- Request only the missing access needed to proceed.
+
+Never claim a provider integration is verified
+solely because a mock test passed.
+
+============================================================
+30. CODE QUALITY STANDARDS
+============================================================
+
+- Use TypeScript strict typing.
+- Avoid `any` unless carefully justified.
+- Use runtime validation at system boundaries.
+- Validate user inputs.
+- Enforce authorization server-side.
+- Keep handlers small.
+- Keep domain logic separate from presentation.
+- Keep external HTTP calls inside provider adapters.
+- Use transactions for related database writes.
+- Use idempotency for retries.
+- Use structured errors.
+- Avoid circular module dependencies.
+- Avoid premature abstraction.
+- Avoid duplicate code.
+- Use descriptive naming.
+- Add tests for important business rules.
+- Write reversible migrations where feasible.
+- Preserve existing working code.
+- Do not perform destructive database operations without approval.
+- Do not expose secrets in frontend bundles or logs.
+- Do not bypass failing tests.
+
+For each new feature, prefer:
+
+1. Define expected behavior.
+2. Write a focused failing test.
+3. Implement the smallest working feature.
+4. Verify tests pass.
+5. Refactor only where needed.
+6. Run relevant regression tests.
+7. Document the change.
+
+============================================================
+31. FINAL MVP ACCEPTANCE CRITERIA
+============================================================
+
+The project is considered complete when:
+
+1. A merchant signs in using Google.
+
+2. The merchant registers a shop.
+
+3. An administrator approves the merchant.
+
+4. The merchant adds products, images, and stock.
+
+5. The products become visible on Gillu.
+
+6. A customer signs in.
+
+7. The customer adds products from multiple merchants.
+
+8. The customer enters a valid delivery address.
+
+9. The customer places a prepaid or COD order.
+
+10. The application creates one parent order and separate
+    merchant suborders.
+
+11. Prepaid payment confirmation is verified through Cashfree.
+
+12. Each merchant receives only their own order details.
+
+13. A merchant can prepare the package.
+
+14. Shiprocket registers and processes the shipment.
+
+15. The merchant can retrieve the shipping label and AWB.
+
+16. The merchant can request a courier pickup.
+
+17. Customer and merchant can view shipment tracking.
+
+18. The order progresses to delivery or an appropriate
+    failure/return state.
+
+19. The merchant dashboard shows accurate basic sales data.
+
+20. The customer can leave an eligible verified review.
+
+21. Automated tests cover the critical workflows.
+
+22. The application can be deployed using Docker Compose.
+
+All external provider verification must be accurately documented.
+
+============================================================
+32. START EXECUTION
+============================================================
+
+Begin with PHASE 0.
+
+Inspect the existing repository thoroughly.
+
+Do not assume anything about its implementation.
+
+First produce:
+
+1. Repository audit
+2. Technology inventory
+3. Polar removal plan
+4. Module boundaries
+5. Database design
+6. API contract outline
+7. Docker service plan
+8. Testing strategy
+9. Phase-by-phase task checklist
+
+Then begin Phase 1.
+
+Proceed incrementally as long as:
+- Tests pass,
+- Acceptance criteria are met,
+- No blocking product decision remains,
+- No additional authority or credentials are required.
+
+Stop when a critical blocker needs user input.
+
+Never replace an incomplete integration with fake success behavior.
+
+The objective is a working Gillu marketplace MVP,
+not merely a collection of UI pages.

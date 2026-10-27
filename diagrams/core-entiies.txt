@@ -1,0 +1,25 @@
+erDiagram
+    USERS ||--o{ MERCHANT_MEMBERS : belongs_to
+    MERCHANTS ||--o{ MERCHANT_MEMBERS : has
+    MERCHANTS ||--o{ PRODUCTS : sells
+    PRODUCTS ||--|| INVENTORY : has
+    USERS ||--o{ ORDERS : places
+    ORDERS ||--o{ MERCHANT_ORDERS : splits_into
+    MERCHANTS ||--o{ MERCHANT_ORDERS : fulfills
+    MERCHANT_ORDERS ||--o{ ORDER_ITEMS : contains
+    PRODUCTS ||--o{ ORDER_ITEMS : purchased_as
+    MERCHANT_ORDERS ||--o{ SHIPMENTS : shipped_via
+
+
+note : 
+Critical database constraints
+These are non-negotiable:
+1. Every product must belong to a merchant.
+2. Merchant members must be explicitly authorized.
+3. An order item's price must be snapshotted at checkout.
+4. Inventory cannot become negative.
+5. An order payment attempt must map to exactly one internal order.
+6. External provider IDs must have appropriate unique constraints.
+7. Duplicate webhook events must not produce duplicate business transitions.
+8. An order must retain its shipping address even if the customer later edits their saved address.
+For money, store integer paise in PostgreSQL, preferably as BIGINT for aggregate amounts. Expose monetary amounts through APIs as integer-safe strings or appropriately bounded integers, and convert to the provider's required unit only at the integration boundary.

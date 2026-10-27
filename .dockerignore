@@ -1,0 +1,16 @@
+.git
+.github
+.cursor
+.vscode
+.agents
+.codex
+.aws
+node_modules
+.next
+.env
+.env.*
+*.log
+*.tsbuildinfo
+.eslintcache
+coverage
+docs

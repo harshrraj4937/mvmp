@@ -1,0 +1,19 @@
+flowchart TD
+    UI["Next.js: Storefront + Merchant + Admin"]
+    API["Commerce API"]
+    DB[("PostgreSQL")]
+    REDIS[("Redis / BullMQ")]
+    PW["Payment Worker"]
+    SW["Shipping Worker"]
+    CF["Cashfree"]
+    SR["Shiprocket"]
+
+    UI --> API
+    API --> DB
+    API --> REDIS
+    REDIS --> PW
+    REDIS --> SW
+    PW <--> CF
+    SW <--> SR
+    PW --> API
+    SW --> API

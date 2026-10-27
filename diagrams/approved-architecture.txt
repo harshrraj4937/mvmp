@@ -1,0 +1,30 @@
+flowchart TD
+    CUSTOMER["Customer storefront"]
+    MERCHANT["Merchant dashboard"]
+    ADMIN["Admin dashboard"]
+
+    WEB["Next.js + Better Auth"]
+
+    CORE["Gillu Commerce Modules"]
+    DB[("PostgreSQL + Drizzle")]
+    REDIS[("Redis + BullMQ")]
+
+    PAYMENT["Cashfree Worker"]
+    SHIPPING["Shiprocket Worker"]
+
+    CUSTOMER --> WEB
+    MERCHANT --> WEB
+    ADMIN --> WEB
+
+    WEB --> CORE
+    CORE --> DB
+    CORE --> REDIS
+
+    REDIS --> PAYMENT
+    REDIS --> SHIPPING
+
+    PAYMENT <--> CASHFREE["Cashfree API"]
+    SHIPPING <--> SHIPROCKET["Shiprocket API"]
+
+    PAYMENT --> DB
+    SHIPPING --> DB

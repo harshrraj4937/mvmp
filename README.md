@@ -58,6 +58,58 @@
 4. follow prompts to configure your store.
 -->
 
+### Docker Compose
+
+Requires Docker Engine and the Docker Compose v2 plugin. Node.js and Bun do not
+need to be installed on the host.
+
+```bash
+cp .env.docker.example .env
+openssl rand -hex 32 # copy the result into POSTGRES_PASSWORD in .env
+openssl rand -hex 32 # copy a second result into AUTH_SECRET in .env
+docker compose up --build -d
+```
+
+Open <http://localhost:3000>. Compose starts PostgreSQL, waits for it to be
+healthy, applies the Drizzle schema with `db:push`, then starts the production
+Next.js server. The database stays in the `postgres_data` named volume. Database
+setup exits successfully after applying the schema; that container is not a
+long-running service.
+
+The Dockerfile installs from `bun.lock` and builds a standalone Next.js image
+that runs as a non-root user. `.env` files are excluded from the image. Compose
+overrides `DATABASE_URL` to use its `db` service; do not use `localhost` for the
+database hostname inside a container.
+
+```bash
+docker compose logs -f app       # application logs
+docker compose logs db-setup     # schema setup logs
+docker compose ps -a             # service status, including schema setup
+docker compose down              # stop containers; retain database data
+docker compose up --build -d     # rebuild after source changes
+```
+
+For another port, set `APP_PORT`, `NEXT_PUBLIC_APP_URL`, and
+`NEXT_SERVER_APP_URL` together in `.env` (for example, `3001` and
+`http://localhost:3001`). For a hosted deployment, use the public HTTPS URL for
+both URL variables and put the app behind your HTTPS reverse proxy.
+`NEXT_PUBLIC_APP_URL` is embedded during the build, so rebuild when it changes.
+
+Supply real OAuth, UploadThing, and Polar credentials in `.env` to use those
+integrations. The existing Polar integration also attempts to create a customer
+on signup, so a working payment configuration is needed to fully exercise signup.
+See the Polar setup below for product configuration.
+
+The automatic schema step is convenient for a fresh local database. Back up
+existing data and review schema changes before upgrading; `db:push` may require
+interactive confirmation for destructive changes. This setup does not force
+those changes. Never use `docker compose down -v` unless you intend to delete
+the database. Changing `POSTGRES_PASSWORD` after initial setup does not update
+the password stored in an existing PostgreSQL volume.
+
+The image follows the [Next.js standalone deployment documentation](https://nextjs.org/docs/15/app/api-reference/config/next-config-js/output),
+and service startup follows [Compose dependency conditions](https://docs.docker.com/compose/how-tos/startup-order/).
+
 ### commands
 
 | command         | description                    |

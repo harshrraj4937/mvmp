@@ -1,0 +1,15 @@
+flowchart TD
+    A["Merchant signs in with Google"] --> B["Creates shop and adds products"]
+    B --> C["Products appear on Gillu"]
+    C --> D["Customer places an order"]
+    D --> E["Cashfree prepaid / COD"]
+    E --> F["Seller receives and packs order"]
+    F --> G["Shiprocket pickup and tracking"]
+    G --> H["Customer receives product"]
+    H --> I["Seller sees completed sale"]
+
+
+first milestone, I want three working screens:
+1. Merchant onboarding — Register a shop with Google SSO.
+2. Product management — Add products with prices, images, descriptions, and stock.
+3. Merchant dashboard — Display actual products and inventory from PostgreSQL.

@@ -1,0 +1,14 @@
+flowchart TD
+    A["Customer places order"] --> B["Create order + reserve stock"]
+    B --> C{"Payment method?"}
+    C -->|Prepaid| D["Cashfree payment"]
+    C -->|COD| E["Validate COD eligibility"]
+    D --> F{"Verified payment?"}
+    F -->|Yes| G["Confirm order"]
+    F -->|Failed / expired| H["Handle failure + release reservation"]
+    E --> G
+    G --> I["Create merchant suborders"]
+    I --> J["Merchant accepts + packs"]
+    J --> K["Shiprocket shipment + pickup"]
+    K --> L["Courier tracking"]
+    L --> M["Delivered / exception / return"]

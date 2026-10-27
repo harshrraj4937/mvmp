@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gillu-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: gillu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: gillu
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gillu -d gillu"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+    networks:
+      - gillu-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+
+    container_name: gillu-web
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://gillu:${POSTGRES_PASSWORD}@postgres:5432/gillu
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_SERVER_APP_URL: http://localhost:3000
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - gillu-network
+
+networks:
+  gillu-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

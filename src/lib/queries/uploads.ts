@@ -1,21 +1,46 @@
 import "server-only";
-import { desc } from "drizzle-orm";
+
+import { desc, eq } from "drizzle-orm";
 
 import type { UserWithUploads } from "~/app/admin/summary/page.types";
 
 import { db } from "~/db";
-import { userTable } from "~/db/schema";
+import { uploadsTable, userTable } from "~/db/schema";
 
-// Fetch users and their uploads using relational queries
 export async function getUsersWithUploads(): Promise<UserWithUploads[]> {
   try {
-    const users: UserWithUploads[] = await db.query.userTable.findMany({
-      orderBy: [desc(userTable.createdAt)],
-      with: {
-        uploads: true,
-      },
-    });
-    return users;
+    const rows = await db
+      .select({
+        user: userTable,
+        upload: uploadsTable,
+      })
+      .from(userTable)
+      .leftJoin(
+        uploadsTable,
+        eq(userTable.id, uploadsTable.userId),
+      )
+      .orderBy(desc(userTable.createdAt));
+
+    const usersById = new Map<string, UserWithUploads>();
+
+    for (const { user, upload } of rows) {
+      let result = usersById.get(user.id);
+
+      if (!result) {
+        result = {
+          ...user,
+          uploads: [],
+        };
+
+        usersById.set(user.id, result);
+      }
+
+      if (upload !== null) {
+        result.uploads.push(upload);
+      }
+    }
+
+    return Array.from(usersById.values());
   } catch (error) {
     console.error("Failed to fetch users with uploads:", error);
     return [];
