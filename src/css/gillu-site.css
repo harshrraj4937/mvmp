@@ -2044,3 +2044,11 @@ html:has(.gillu-site) {
     }
   }
 }
+/* Port fix: the app's Tailwind preflight sets `img { height: auto }`, which the
+   static site did not have; the source story image renders at its 800px
+   height attribute, so keep that. */
+@scope (.gillu-site) {
+  .story-image > img {
+    height: 800px;
+  }
+}
