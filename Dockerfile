@@ -16,7 +16,7 @@ FROM dependencies AS tooling
 COPY . .
 
 FROM tooling AS builder
-ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
+ARG NEXT_PUBLIC_APP_URL=http://localhost:8080
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 # Build-time imports need these values; real credentials are runtime-only.
 RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \

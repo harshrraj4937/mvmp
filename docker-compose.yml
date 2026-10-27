@@ -1,55 +1,109 @@
+# Gillu production-style stack. Only nginx publishes a port; Postgres and
+# Redis stay on the internal network. Secrets come from the env file
+# (default .env, override with GILLU_ENV_FILE) — never from the image.
+name: gillu
+
+x-app-env: &app-env
+  env_file:
+    - ${GILLU_ENV_FILE:-.env}
+  environment:
+    DATABASE_URL: postgresql://gillu:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/gillu
+    NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:8080}
+    NEXT_SERVER_APP_URL: ${NEXT_SERVER_APP_URL:-http://localhost:8080}
+    REDIS_URL: redis://redis:6379
+
 services:
   postgres:
-    image: postgres:16-alpine
     container_name: gillu-postgres
-    restart: unless-stopped
-
     environment:
-      POSTGRES_USER: gillu
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: gillu
-
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_USER: gillu
+    healthcheck:
+      interval: 5s
+      retries: 15
+      test: ["CMD-SHELL", "pg_isready -U gillu -d gillu"]
+      timeout: 5s
+    image: postgres:16-alpine
+    networks: [gillu-network]
+    restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    command: ["redis-server", "--appendonly", "yes"]
+    container_name: gillu-redis
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gillu -d gillu"]
       interval: 5s
-      timeout: 5s
       retries: 15
-
-    networks:
-      - gillu-network
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-
-    container_name: gillu-web
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+    image: redis:7-alpine
+    networks: [gillu-network]
     restart: unless-stopped
+    volumes:
+      - redis_data:/data
 
-    ports:
-      - "127.0.0.1:3000:3000"
-
-    env_file:
-      - .env
-
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: postgresql://gillu:${POSTGRES_PASSWORD}@postgres:5432/gillu
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
-      NEXT_SERVER_APP_URL: http://localhost:3000
-
+  # One-shot: applies committed Drizzle migrations, then exits.
+  migrate:
+    <<: *app-env
+    build:
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:8080}
+      context: .
+      target: tooling
+    command: ["bun", "run", "db:migrate"]
+    container_name: gillu-migrate
     depends_on:
       postgres:
         condition: service_healthy
+    networks: [gillu-network]
+    restart: "no"
 
-    networks:
-      - gillu-network
+  web:
+    <<: *app-env
+    build:
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:8080}
+      context: .
+    container_name: gillu-web
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    expose:
+      - "3000"
+    healthcheck:
+      interval: 10s
+      retries: 6
+      start_period: 20s
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      timeout: 5s
+    networks: [gillu-network]
+    restart: unless-stopped
+
+  nginx:
+    container_name: gillu-nginx
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      interval: 10s
+      retries: 6
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/nginx-health"]
+      timeout: 5s
+    image: nginx:1.27-alpine
+    networks: [gillu-network]
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
+    restart: unless-stopped
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 networks:
   gillu-network:
@@ -57,3 +111,4 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
