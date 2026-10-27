@@ -26,3 +26,5 @@ export const db = drizzle(conn, {
   logger: DB_DEV_LOGGER && process.env.NODE_ENV !== "production",
   schema,
 });
+
+export type Database = typeof db;

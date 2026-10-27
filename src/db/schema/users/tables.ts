@@ -18,6 +18,9 @@ import {
 
 export const userTable = pgTable("user", {
   age: integer("age"),
+  banExpires: timestamp("ban_expires"),
+  banned: boolean("banned").default(false),
+  banReason: text("ban_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
@@ -26,6 +29,7 @@ export const userTable = pgTable("user", {
   image: text("image"),
   lastName: text("last_name"),
   name: text("name").notNull(),
+  role: text("role"),
   twoFactorEnabled: boolean("two_factor_enabled").default(false),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -39,6 +43,7 @@ export const sessionTable = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     expiresAt: timestamp("expires_at").notNull(),
     id: text("id").primaryKey(),
+    impersonatedBy: text("impersonated_by"),
     ipAddress: text("ip_address"),
     token: text("token").notNull().unique(),
     updatedAt: timestamp("updated_at")

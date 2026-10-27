@@ -22,7 +22,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "test:integration": "vitest run --project integration"
+    "test:integration": "vitest run --project integration",
+    "admin:grant": "bun scripts/admin-grant.ts"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",

@@ -1,17 +1,11 @@
 import type React from "react";
 
-import { getCurrentUserOrRedirect } from "~/lib/auth";
+import { requireAdmin } from "~/modules/identity";
 
 export default async function AdminLayout({
   children,
 }: { children: React.ReactNode }) {
-  await getCurrentUserOrRedirect();
-
-  // TODO: implement admin check
-  // const user = await getCurrentUserOrRedirect();
-  // if (!user?.isAdmin) {
-  //   redirect("/");
-  // }
+  await requireAdmin();
 
   return (
     <div className="container mx-auto py-10">
