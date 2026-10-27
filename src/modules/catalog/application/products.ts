@@ -18,6 +18,7 @@ import type { MerchantContext } from "~/modules/merchants";
 import {
   categoriesTable,
   inventoryTable,
+  merchantsTable,
   productImagesTable,
   productsTable,
   productVariantsTable,
@@ -73,6 +74,12 @@ export interface ProductSummary {
   totalAvailable: number;
 }
 
+/** A product summary with the shop it belongs to (admin views). */
+export type ShopProductSummary = ProductSummary & {
+  merchantId: string;
+  storeName: string;
+};
+
 /** Product counts for the merchant overview (archived products excluded from stock counts). */
 export async function catalogCounts(
   db: Database,
@@ -82,7 +89,7 @@ export async function catalogCounts(
   lowStock: number;
   outOfStock: number;
 }> {
-  const products = await summaries(db, ctx, []);
+  const products = await summaries(db, [ownedBy(ctx)]);
   const byStatus = Object.fromEntries(
     PRODUCT_STATUSES.map((status) => [status, 0]),
   ) as Record<ProductStatus, number>;
@@ -140,7 +147,10 @@ export async function getProduct(
   ctx: MerchantContext,
   productId: string,
 ): Promise<ProductDetail> {
-  const [summary] = await summaries(db, ctx, [eq(productsTable.id, productId)]);
+  const [summary] = await summaries(db, [
+    ownedBy(ctx),
+    eq(productsTable.id, productId),
+  ]);
   if (!summary) {
     throw productNotFound();
   }
@@ -211,7 +221,65 @@ export async function listProducts(
       conditions.push(searched);
     }
   }
-  return summaries(db, ctx, conditions);
+  return summaries(db, [ownedBy(ctx), ...conditions]);
+}
+
+/** Product summaries matching `conditions`, with their shop. */
+export async function summaries(
+  db: Executor,
+  conditions: (SQL | undefined)[],
+): Promise<ShopProductSummary[]> {
+  const activeVariant = sql`${productVariantsTable.isActive}`;
+  const rows = await db
+    .select({
+      adminHoldReason: productsTable.adminHoldReason,
+      anyLow: sql<
+        boolean | null
+      >`bool_or(${activeVariant} and ${inventoryTable.available} <= ${LOW_STOCK_THRESHOLD})`,
+      categoryName: categoriesTable.name,
+      coverImageUrl: sql<null | string>`(
+        select ${productImagesTable.url} from ${productImagesTable}
+        where ${productImagesTable.productId} = ${productsTable.id}
+        order by ${productImagesTable.sortOrder}, ${productImagesTable.createdAt}
+        limit 1
+      )`,
+      id: productsTable.id,
+      merchantId: productsTable.merchantId,
+      name: productsTable.name,
+      priceFrom: sql<
+        null | string
+      >`min(${productVariantsTable.pricePaise}) filter (where ${activeVariant})`,
+      slug: productsTable.slug,
+      status: productsTable.status,
+      storeName: merchantsTable.storeName,
+      totalAvailable: sql<string>`coalesce(sum(${inventoryTable.available}) filter (where ${activeVariant}), 0)`,
+    })
+    .from(productsTable)
+    .innerJoin(
+      categoriesTable,
+      eq(categoriesTable.id, productsTable.categoryId),
+    )
+    .innerJoin(merchantsTable, eq(merchantsTable.id, productsTable.merchantId))
+    .leftJoin(
+      productVariantsTable,
+      eq(productVariantsTable.productId, productsTable.id),
+    )
+    .leftJoin(
+      inventoryTable,
+      eq(inventoryTable.variantId, productVariantsTable.id),
+    )
+    .where(and(...conditions))
+    .groupBy(productsTable.id, categoriesTable.name, merchantsTable.storeName)
+    .orderBy(desc(productsTable.updatedAt), desc(productsTable.createdAt));
+  return rows.map(({ anyLow, priceFrom, totalAvailable, ...row }) => {
+    const total = Number(totalAvailable);
+    return {
+      ...row,
+      lowStock: total > 0 && anyLow === true,
+      priceFromPaise: priceFrom === null ? null : Number(priceFrom),
+      totalAvailable: total,
+    };
+  });
 }
 
 /**
@@ -312,57 +380,6 @@ async function listImages(
     );
 }
 
-async function summaries(
-  db: Executor,
-  ctx: MerchantContext,
-  conditions: (SQL | undefined)[],
-): Promise<ProductSummary[]> {
-  const activeVariant = sql`${productVariantsTable.isActive}`;
-  const rows = await db
-    .select({
-      adminHoldReason: productsTable.adminHoldReason,
-      anyLow: sql<
-        boolean | null
-      >`bool_or(${activeVariant} and ${inventoryTable.available} <= ${LOW_STOCK_THRESHOLD})`,
-      categoryName: categoriesTable.name,
-      coverImageUrl: sql<null | string>`(
-        select ${productImagesTable.url} from ${productImagesTable}
-        where ${productImagesTable.productId} = ${productsTable.id}
-        order by ${productImagesTable.sortOrder}, ${productImagesTable.createdAt}
-        limit 1
-      )`,
-      id: productsTable.id,
-      name: productsTable.name,
-      priceFrom: sql<
-        null | string
-      >`min(${productVariantsTable.pricePaise}) filter (where ${activeVariant})`,
-      slug: productsTable.slug,
-      status: productsTable.status,
-      totalAvailable: sql<string>`coalesce(sum(${inventoryTable.available}) filter (where ${activeVariant}), 0)`,
-    })
-    .from(productsTable)
-    .innerJoin(
-      categoriesTable,
-      eq(categoriesTable.id, productsTable.categoryId),
-    )
-    .leftJoin(
-      productVariantsTable,
-      eq(productVariantsTable.productId, productsTable.id),
-    )
-    .leftJoin(
-      inventoryTable,
-      eq(inventoryTable.variantId, productVariantsTable.id),
-    )
-    .where(and(eq(productsTable.merchantId, ctx.merchantId), ...conditions))
-    .groupBy(productsTable.id, categoriesTable.name)
-    .orderBy(desc(productsTable.updatedAt), desc(productsTable.createdAt));
-  return rows.map(({ anyLow, priceFrom, totalAvailable, ...row }) => {
-    const total = Number(totalAvailable);
-    return {
-      ...row,
-      lowStock: total > 0 && anyLow === true,
-      priceFromPaise: priceFrom === null ? null : Number(priceFrom),
-      totalAvailable: total,
-    };
-  });
+function ownedBy(ctx: MerchantContext): SQL {
+  return eq(productsTable.merchantId, ctx.merchantId);
 }

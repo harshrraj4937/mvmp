@@ -2,13 +2,30 @@ import { createId } from "@paralleldrive/cuid2";
 
 import type { Database } from "~/db";
 
-import { categoriesTable } from "~/db/schema";
+import { categoriesTable, productImagesTable } from "~/db/schema";
 import { productCreateSchema } from "~/modules/catalog/presentation/schemas";
 import { submitMerchant } from "~/modules/merchants/application/profile";
 import { approveMerchant } from "~/modules/merchants/application/review";
 
 import { testAdmin } from "../../support/merchant-fixtures";
 import { seedMerchant, seedUser } from "./merchants";
+
+/** An image row without a stored file, for tests that only need one to exist. */
+export async function addImageRow(db: Database, productId: string) {
+  const id = createId();
+  await db.insert(productImagesTable).values({
+    alt: "Test image",
+    bytes: 38,
+    contentType: "image/webp",
+    height: 2,
+    id,
+    productId,
+    storageKey: `test/${id}.webp`,
+    url: `/api/v1/images/test/${id}.webp`,
+    width: 3,
+  });
+  return id;
+}
 
 /** Parsed product input, as a route handler would pass it to the service. */
 export function productInput(

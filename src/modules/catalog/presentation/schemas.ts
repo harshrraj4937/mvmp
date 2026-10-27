@@ -152,6 +152,11 @@ export const variantPatchSchema = z
   )
   .refine(mrpCoversPrice, mrpIssue);
 
+/** An admin hold: why the product was taken down, shown to the merchant. */
+export const holdSchema = z.object({
+  reason: z.string().trim().min(5).max(500),
+});
+
 export const stockAdjustmentSchema = z.object({
   delta: wholeNumber(-100_000, 100_000).refine(
     (delta) => delta !== 0,
@@ -164,6 +169,7 @@ export const stockAdjustmentSchema = z.object({
   reason: z.enum(STOCK_REASONS).exclude(["INITIAL"]),
 });
 
+export type Hold = z.output<typeof holdSchema>;
 export type ProductCreate = z.output<typeof productCreateSchema>;
 export type ProductPatch = z.output<typeof productPatchSchema>;
 export type StockAdjustment = z.output<typeof stockAdjustmentSchema>;
