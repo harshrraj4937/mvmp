@@ -266,3 +266,70 @@ Date: 2026-10-27
 
 Decision: Keep the shipping adapter capable of per-merchant account
 configuration; implement only the platform account for MVP.
+
+---
+
+## ADR-022: API error contract and `{ data }` envelope
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: Every `/api/v1` handler wraps `apiRoute()` (`src/platform/http.ts`).
+Success is `{ data }` (200, 201 on create). Failure is
+`{ error: { code, message, details? }, requestId }` with a stable snake_case
+`code`; `details` carries field errors (`validation_failed`) or the locked
+fields (`field_locked`). Unexpected errors are logged with the request id
+and returned as `500 internal_error` without their message. All responses
+are `Cache-Control: no-store`. Errors are `AppError` subclasses in
+`src/platform/errors.ts`, which has no IO so the domain layer can throw them.
+
+Consequence: clients branch on `code`, never on `message` text. The
+contract is documented in `docs/api-contracts.md`.
+
+---
+
+## ADR-023: One owned merchant per user; membership decides the current shop
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: In the MVP a user owns at most one merchant, enforced by the
+partial unique index `merchant_members_one_owned_per_user` (WHERE
+`role = 'owner'`), so concurrent onboarding cannot create two. Staff
+memberships may be many. The current merchant is resolved from membership —
+owner membership first, then the oldest — and never from a request
+parameter. A shop switcher arrives with staff invitations.
+
+Consequence: merchant endpoints take no merchant id; ids of another shop's
+resources return 404.
+
+---
+
+## ADR-024: Field locking after approval
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: DRAFT and REJECTED shops can edit everything; SUBMITTED shops
+nothing (`409 under_review`); APPROVED and SUSPENDED shops cannot change
+`storeName`, `slug`, `gstin`, `pan` or `fssaiLicense` (`409 field_locked`).
+Changing them needs Gillu admin help (no admin edit screen yet). Sending
+an unchanged locked value is allowed.
+
+Consequence: customer-facing identity (name, URL) and the identifiers an
+admin approved cannot drift after approval.
+
+---
+
+## ADR-025: Compliance identifiers optional and unverified
+
+Status: Accepted
+Date: 2026-10-27
+
+Decision: GSTIN, PAN, FSSAI licence and compliance notes are optional,
+stored as declared (uppercased) and shown as "Unverified" while
+`merchants.compliance_verified_at` is null. Nothing sets it until Gillu
+confirms which registrations each merchant type needs (open input).
+
+Consequence: approval does not imply verified compliance; later phases must
+not treat these fields as validated.

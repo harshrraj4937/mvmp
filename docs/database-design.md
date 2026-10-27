@@ -1,7 +1,7 @@
 # Database Design
 
-Status: Phase 1 — auth and uploads tables only. Marketplace tables are added
-from Phase 2 (plan in [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md) §6).
+Status: Phase 2 — auth, uploads and merchant tables. Further marketplace
+tables follow the plan in [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md) §6.
 
 ## Workflow
 
@@ -20,6 +20,7 @@ from Phase 2 (plan in [design](superpowers/specs/2026-10-27-gillu-marketplace-de
 |---|---|
 | `0000_tidy_trish_tilby` | `user`, `session`, `account`, `verification`, `two_factor`, `uploads`, enum `type` (image/video); indexes on session/account `user_id`, two_factor `secret`/`user_id`, verification `identifier` |
 | `0001_tough_malcolm_colcord` | admin plugin: `user.role`, `user.banned` (default false), `user.ban_reason`, `user.ban_expires`, `session.impersonated_by` — additive only |
+| `0002_military_paibok` | Phase 2: enums `merchant_status`, `merchant_member_role`; tables `merchants`, `merchant_members`, `merchant_pickup_locations` with their foreign keys, indexes and CHECK — additive only (no DROP/ALTER of existing tables) |
 
 ## Current tables
 
@@ -29,6 +30,10 @@ erDiagram
     user ||--o{ account : has
     user ||--o{ two_factor : has
     user ||--o{ uploads : owns
+    user ||--o{ merchant_members : "belongs to"
+    merchants ||--o{ merchant_members : has
+    merchants ||--o{ merchant_pickup_locations : has
+    user |o--o{ merchants : "reviewed_by"
 ```
 
 | Table | Notes |
@@ -39,6 +44,13 @@ erDiagram
 | `verification` | email/OTP verification values |
 | `two_factor` | TOTP secret, backup codes, `verified`, `failed_verification_count`, `locked_until` |
 | `uploads` | UploadThing `key` + `url` per user; no binaries in Postgres |
+| `merchants` | One shop. `slug` unique (`merchants_slug_unique`); `status` enum `merchant_status` (DRAFT, SUBMITTED, APPROVED, REJECTED, SUSPENDED; default DRAFT, indexed); contact name/email/phone (`+91…`); `business_address` and `return_address` jsonb (`line1`, `line2?`, `city`, `state`, `postalCode`); optional `description`, `logo_url`, `gstin`, `pan`, `fssai_license`, `compliance_notes`; `compliance_verified_at` (null = unverified, ADR-025); `submitted_at`, `reviewed_at`, `reviewed_by` → `user` (set null), `rejection_reason` |
+| `merchant_members` | `merchant_id` → `merchants` and `user_id` → `user` (both cascade); `role` enum owner/staff; unique (`merchant_id`, `user_id`); partial unique index `merchant_members_one_owned_per_user` on `user_id` WHERE `role = 'owner'` (one owned shop per user, ADR-023) |
+| `merchant_pickup_locations` | `merchant_id` → `merchants` (cascade); `label`, `contact_name`, `phone`, `line1`, `line2?`, `city`, `state`, `postal_code` (CHECK `^[1-9][0-9]{5}$`), `is_primary`; partial unique index `merchant_pickup_locations_one_primary` on `merchant_id` WHERE `is_primary`; `provider_location_name` reserved for Shiprocket (Phase 7) |
+
+All Phase 2 timestamps are `timestamptz`. Ids are text cuid2 values generated in the
+application (`createId()`). The merchant schema files use relative imports because
+drizzle-kit does not resolve the `~` alias.
 
 Polar tables (`polar_customer`, `polar_subscription`) were never migrated and
 no longer exist in the schema.

@@ -6,7 +6,7 @@ session and passed (requirements §29). Status values: NOT_STARTED,
 IN_PROGRESS, COMPLETED, BLOCKED, NEEDS_INPUT.
 
 ## Current Phase
-Phase 2 — Merchant Authentication (not started)
+Phase 3 — Product Management (not started). Phase 2 COMPLETED on `gillu/phase-2` (not merged).
 
 ## Audit Notes
 
@@ -90,16 +90,33 @@ Final review fix pass, 2026-10-27 (same branch):
 | `bun run test:e2e` (includes production build) | PASS — 9/9 |
 
 ### Phase 2 — Merchant Authentication
-Status: NOT_STARTED
+Status: COMPLETED (Google OAuth: code complete; manual verification NEEDS_INPUT)
+Plan: docs/superpowers/plans/2026-10-27-gillu-phase-2-merchant-auth.md
+Branch: `gillu/phase-2` (from `gillu/phase-0-1` @ d62c582)
 
-- [ ] Google OAuth (NEEDS_INPUT: Google OAuth client id/secret for manual verification)
-- [ ] Merchant membership
-- [ ] Merchant onboarding
-- [ ] Role authorization
-- [ ] Merchant approval
-- [ ] Merchant profile
-- [ ] Pickup addresses
-- [ ] Deliver: merchant can register and access an approved dashboard
+- [x] Google OAuth — code complete and unit-tested (buttons only when id + secret set, `prompt: select_account`, profile name mapping, safe `?next=`). **Manual verification NEEDS_INPUT (Google OAuth credentials); not verified against Google.**
+- [x] Merchant membership — `merchant_members` (owner/staff), one owned shop per user (partial unique index), owner-first resolution
+- [x] Merchant onboarding — API + `/merchant/onboarding` UI; one transaction (shop, owner, primary pickup); duplicate/racing onboarding → one shop
+- [x] Role authorization — `authorizeSession/Admin/Merchant` (API), `requireSession/Admin/Merchant/ApprovedMerchant` (pages); every page/handler authorizes itself
+- [x] Merchant approval — admin queue and detail (`/admin/merchants`), approve/reject (reason shown to merchant)/suspend/reinstate; guarded concurrent transitions
+- [x] Merchant profile — `/merchant/profile`; locked fields after approval; compliance ids optional and "Unverified"
+- [x] Pickup addresses — `/merchant/settings/shipping`; primary handling; cross-merchant ids → 404
+- [x] Deliver: merchant can register and access an approved dashboard (E2E Scenario A)
+
+#### Verification
+Run 2026-10-27 on `gillu/phase-2` (gate, Task 10):
+
+| Check | Result |
+|---|---|
+| `bun run typecheck` | PASS |
+| `bun run lint` (ESLint + Biome) | PASS |
+| `bun run knip` | PASS |
+| `bun run test:unit` | PASS — 96/96 (11 files) |
+| `bun run test:integration` (Testcontainers Postgres 16) | PASS — 39/39 (7 files) |
+| `bun run test:e2e` (Playwright, Chromium, includes production build) | PASS — 26/26 |
+| Compose smoke (isolated project `gillu-smoke`, port 18080, throwaway env) | PASS — all services healthy; `migrate` exited 0; `drizzle.__drizzle_migrations` has 3 rows and `merchants`, `merchant_members`, `merchant_pickup_locations` exist (0002 applied); `GET /api/health` → 200; `GET /api/v1/merchant/profile` → 401 `{"error":{"code":"unauthorized",…},"requestId":…}` with `no-store`; `down -v` removed only `gillu-smoke_*` volumes. The existing `gillu` stack and `relivator_postgres_data` were not touched. |
+| Security boundaries | Non-admin: `/admin/merchants` and `/admin/merchants/[id]` → 404, no merchant contact email in the HTML or in a forged RSC request (now with a router-state tree Next 16 accepts; mutation-tested), admin API → 403. Merchant: shop from membership only; other shop's pickup id → 404; staff cannot edit/submit; suspension applies on the next request. Open redirect: `?next=` same-site paths only. |
+| Google OAuth | NOT VERIFIED — no credentials (NEEDS_INPUT) |
 
 ### Phase 3 — Product Management
 Status: NOT_STARTED
@@ -188,14 +205,14 @@ Status: NOT_STARTED
 
 ## Blockers
 
-None for Phases 0–1 (both COMPLETED).
+None for Phases 0–2 (all COMPLETED; Phase 2 Google sign-in still awaits manual verification).
 
 Open inputs (NEEDS_INPUT, block only the phase named):
-- Google OAuth client id/secret — Phase 2 manual verification
+- Google OAuth client id/secret — Phase 2 manual verification (code complete)
 - Gillu landing-page source/assets — Phase 4
 - Cashfree sandbox app id/secret — Phase 6
 - Shiprocket sandbox login — Phase 7
-- Compliance fields per merchant type (GSTIN/PAN/FSSAI…) — Phase 2, stored optional and flagged unverified until confirmed
+- Compliance fields per merchant type (GSTIN/PAN/FSSAI…) — stored optional and shown "Unverified" (`compliance_verified_at` null) until confirmed (ADR-025)
 
 ## Phase Reports
 
@@ -237,3 +254,29 @@ KNOWN ISSUES:
 - No TLS in the shipped nginx config; Redis has no password (internal network only)
 BLOCKERS: none
 NEXT PHASE: 2 — Merchant Authentication (needs Google OAuth credentials only for its manual Google verification)
+
+### Phase 2 report
+
+PHASE: 2 — Merchant Authentication
+STATUS: COMPLETED (Google OAuth code complete; manual verification NEEDS_INPUT)
+FEATURES IMPLEMENTED:
+- Google/GitHub sign-in buttons only for configured providers; Google `prompt: select_account`; profile → first/last name; `?next=` carried through sign-in/sign-up, same-site paths only
+- `/api/v1` error contract (`{ data }` / `{ error: { code, message, details? }, requestId }`, `no-store`) via `apiRoute()` (ADR-022)
+- Merchants module (domain/application/presentation): statuses DRAFT → SUBMITTED → APPROVED/REJECTED, APPROVED ⇄ SUSPENDED; guarded transitions; one owned shop per user (ADR-023); locked fields after approval (ADR-024); optional, unverified compliance ids (ADR-025); Indian phone/PIN normalisation; reserved slugs
+- Migration 0002 (additive): `merchants`, `merchant_members`, `merchant_pickup_locations`
+- Merchant API: onboarding, profile GET/PATCH, submit, pickup locations list/add/update
+- Admin API: review queue with status filter, detail, approve/reject/suspend/reinstate
+- Pages: `/merchant/{onboarding,profile,settings/shipping,dashboard}`, `/admin/merchants`, `/admin/merchants/[id]`; `/admin` → `/admin/merchants`; header "Sell on Gillu"
+- Forged-RSC leak checks now use a router-state tree Next 16 accepts (the Phase 1 check was vacuous) and assert an RSC response
+FILES CHANGED: `git diff --stat d62c582..gillu/phase-2` (77 files before this report); main areas: src/modules/merchants/**, src/modules/identity/index.ts, src/platform/{errors,http,db-errors}.ts, src/lib/{auth,auth-social,safe-next-path,api-client}.ts, src/db/schema/merchants/*, drizzle/0002_*, src/app/api/v1/**, src/app/merchant/**, src/app/admin/{page,layout}.tsx, src/app/admin/merchants/**, src/app/auth/{sign-in,sign-up}/*, src/ui/components/{auth/social-sign-in,header/header}.tsx, tests/**, docs/*, diagrams/*
+TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke
+TEST RESULTS: unit 96/96, integration 39/39, E2E 26/26; typecheck/lint/knip pass; Compose smoke pass (0002 applied, health 200, merchant API 401 JSON with requestId)
+KNOWN ISSUES:
+- Google OAuth not exercised against Google (no credentials)
+- Staff memberships exist only via the database; invitations and a shop switcher come later
+- No admin screen to change locked fields or to mark compliance verified
+- Logo is an https URL field; uploads arrive with the catalog (Phase 3)
+- Dashboard shows no sales/product figures until those phases exist (no mock data)
+- No email notifications on review decisions; merchants check `/merchant/onboarding`
+BLOCKERS: none (Google credentials block only the manual Google check)
+NEXT PHASE: 3 — Product Management
