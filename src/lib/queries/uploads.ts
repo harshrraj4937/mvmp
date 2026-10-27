@@ -5,8 +5,12 @@ import type { UserWithUploads } from "~/app/admin/summary/page.types";
 
 import { db } from "~/db";
 import { uploadsTable, userTable } from "~/db/schema";
+import { requireAdmin } from "~/modules/identity";
 
+/** Every user with their uploads. Admin only: authorizes itself, because a
+ * layout guard does not stop a page segment from rendering. */
 export async function getUsersWithUploads(): Promise<UserWithUploads[]> {
+  await requireAdmin();
   try {
     const rows = await db
       .select({

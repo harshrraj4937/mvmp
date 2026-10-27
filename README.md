@@ -6,7 +6,7 @@
 
 ## stack
 
-1. 🧱 **core**: [nextjs 15.3](https://nextjs.org) + [react 19.1](https://react.dev) + [ts 5.8](https://typescriptlang.org)
+1. 🧱 **core**: [nextjs 16.4](https://nextjs.org) + [react 19.3](https://react.dev) + [ts 5.9](https://typescriptlang.org)
 2. 🎨 **ui**: [tailwind 4.1](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com)
 3. 🔒 **auth**: [better-auth](https://better-auth.com)
 4. 🎬 **anims**: [animejs](https://animejs.com)
@@ -39,10 +39,14 @@
 5. run:
 
    ```bash
-   bun db:push # populate db with schema
+   bun run db:migrate # apply the committed migrations in drizzle/
    bun dev # start development server
    bun run build # build production version
    ```
+
+   a database previously set up with `db:push` already has the tables, so
+   `db:migrate` fails on it with "relation already exists": use a fresh
+   database (only the Relivator dev schema lived there).
 
 6. edit something in the code manually or ask ai to help you.
 7. done. seriously. you're building now.

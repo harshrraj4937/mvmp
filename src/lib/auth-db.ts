@@ -3,21 +3,26 @@ import fs from "fs-extra";
 import MagicString from "magic-string";
 import path from "pathe";
 
+import { stripGeneratedRelations } from "./auth-db-transform";
+
 const configPath = "./src/lib/auth.ts";
 const schemaPath = "./src/db/schema/users/tables.ts";
 
+// Generate with the CLI matching the installed better-auth, not @latest.
+const { version: authCliVersion } = (await fs.readJson(
+  "./node_modules/better-auth/package.json",
+)) as { version: string };
+
 async function main() {
   await execaCommand(
-    `npx auth@latest generate --config ${configPath} --output ${schemaPath} --yes`,
+    `npx auth@${authCliVersion} generate --config ${configPath} --output ${schemaPath} --yes`,
     { stdio: "inherit" },
   );
 
   const filePath = path.resolve(schemaPath);
-  // Relations are maintained by hand in ./relations.ts (they also cover
-  // non-auth tables such as uploads), so drop the generated ones.
-  const originalContent = (await fs.readFile(filePath, "utf8"))
-    .replace(/^import \{ relations \} from "drizzle-orm";\n/m, "")
-    .replace(/\nexport const \w+Relations = relations\([\s\S]*$/, "\n");
+  const originalContent = stripGeneratedRelations(
+    await fs.readFile(filePath, "utf8"),
+  );
 
   const s = new MagicString(originalContent);
 

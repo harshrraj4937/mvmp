@@ -38,12 +38,14 @@ E2E never touches a dev or production database; `AUTH_SECRET` is random per run.
 |---|---|
 | `tests/unit/platform/env.test.ts` | valid env + LOG_LEVEL default; empty optional = absent; missing/non-postgres `DATABASE_URL`; short `AUTH_SECRET` named without echoing it |
 | `tests/unit/platform/request-id.test.ts` | keeps safe ids; replaces null, empty, short, spaced, newline-injected, oversize ids |
+| `tests/unit/platform/logger.test.ts` | secret keys redacted at top level and one level down |
+| `tests/unit/db/auth-db-transform.test.ts` | generated relations stripped without losing tables; unknown CLI output refused |
 | `tests/unit/identity/roles.test.ts` | `isAdmin` for admin, multi-role, user, null, missing, look-alike role |
 | `tests/integration/db/migrations.test.ts` | baseline tables exist, no Polar tables; re-running migrations is a no-op |
 | `tests/integration/identity/grant-admin.test.ts` | grants (keeps existing roles / no role); idempotent; unknown email rejected |
 | `tests/integration/platform/health.test.ts` | ok for live DB; unreachable for dead DB within the timeout |
 | `tests/e2e/auth.spec.ts` | sign up → sign out → sign in; wrong password shows error, no session; duplicate sign-up shows error |
-| `tests/e2e/admin-guard.spec.ts` | signed-out → sign-in; non-admin → 404; admin via CLI → 200 |
+| `tests/e2e/admin-guard.spec.ts` | signed-out → sign-in; non-admin → 404; admin via CLI → 200; non-admin never receives another user's email (404 HTML and forged RSC request claiming the `/admin` layout is loaded) |
 | `tests/e2e/health.spec.ts` | `/api/health` ok + request id echo + no-store; pages get a generated request id |
 
 Deployment smoke (manual, Phase 1): `docker compose up --build -d --wait`, then

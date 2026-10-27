@@ -77,6 +77,18 @@ Run 2026-10-27 on `gillu/phase-0-1` (gate, Task 11):
 | Compose smoke (`docker compose up --build -d --wait`) | PASS — all services healthy; `GET http://127.0.0.1:8080/api/health` → 200 `{"checks":{"database":"ok"},"status":"ok"}` with `x-request-id` echoed; `migrate` exited 0; only nginx publishes a port; web runs as uid 1000 (`node`) |
 | Security boundaries | `/admin/*`: signed-out → sign-in, non-admin → 404, CLI-granted admin → 200 (E2E). No non-`NEXT_PUBLIC_` env in client components. Postgres/Redis publish no ports. nginx overwrites `X-Forwarded-For` (rate-limit bypass prevention). |
 
+Final review fix pass, 2026-10-27 (same branch):
+
+| Check | Result |
+|---|---|
+| Finding: `/admin/summary` leaked every user's email to a non-admin — in the 404 page's HTML and in a forged RSC request — because only the layout checked the role | FIXED — page and `getUsersWithUploads()` now call `requireAdmin()`; E2E `non-admin never receives other users' data from admin pages` RED→GREEN |
+| Finding: logger left top-level `password`/`token`/… keys in clear | FIXED — unit `logger.test.ts` RED→GREEN |
+| Finding: `db:auth` could silently drop a table after a relations block; CLI unpinned | FIXED — unit `auth-db-transform.test.ts` RED→GREEN; CLI pinned to installed better-auth; regenerated schema byte-identical |
+| Finding: README still said `db:push` | FIXED (docs) |
+| `bun run typecheck` / `lint` / `knip` | PASS |
+| `bun run test` (unit 21 + integration 8) | PASS — 29/29 |
+| `bun run test:e2e` (includes production build) | PASS — 9/9 |
+
 ### Phase 2 — Merchant Authentication
 Status: NOT_STARTED
 
@@ -209,14 +221,14 @@ FEATURES IMPLEMENTED:
 - Polar removed (plugin, SDK, routes, service, schema, billing page, payment form, env vars, docs)
 - Upgraded Next.js 16.4.3, React 19.3.1, better-auth 1.7.14, drizzle-orm 0.45.4, drizzle-kit 0.31.11, Zod 4.6, TypeScript 5.9.3
 - Generated Drizzle migrations (0000 baseline, 0001 admin columns) + `runMigrations()`
-- Admin role via better-auth admin plugin; `requireSession`/`requireAdmin`; `/admin/*` hidden (404) from non-admins; `admin:grant` CLI
+- Admin role via better-auth admin plugin; `requireSession`/`requireAdmin`; `/admin/*` hidden (404) from non-admins, checked in layout, page and data function; `admin:grant` CLI
 - Auth pages now surface better-auth errors (previously redirected on failure); sign-up lands signed in (better-auth autoSignIn)
 - Zod 4 server env validation; pino JSON logger; `x-request-id` correlation via `src/proxy.ts` and nginx; `/api/health` (200/503, 2 s timeout)
 - Docker Compose: postgres, redis, one-shot migrate, web, nginx
 - Vitest (unit + Testcontainers integration), Playwright E2E on a throwaway database
 FILES CHANGED: see `git log main..gillu/phase-0-1`; main areas: src/lib/auth*.ts, src/platform/*, src/modules/identity/*, src/proxy.ts, src/app/api/health, src/app/admin/layout.tsx, src/app/auth/*, src/db/*, drizzle/*, tests/*, scripts/*, docker-compose*.yml, Dockerfile, deploy/nginx, docs/*, diagrams/*
 TESTS EXECUTED: typecheck, lint, knip, unit, integration, E2E, production build, Compose smoke
-TEST RESULTS: unit 18/18, integration 8/8, E2E 8/8; typecheck/lint/knip/build pass; Compose smoke pass
+TEST RESULTS: unit 21/21, integration 8/8, E2E 9/9 (after final-review fix pass); typecheck/lint/knip/build pass; Compose smoke pass
 KNOWN ISSUES:
 - Storefront still renders Relivator mock data (Phase 4)
 - Google OAuth not exercised: no credentials (Phase 2 manual verification)
