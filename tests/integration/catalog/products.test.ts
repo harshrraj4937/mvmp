@@ -123,20 +123,21 @@ describe("products", () => {
     const product = await createProduct(db, owner, productInput());
     const variantId = product.variants[0]?.id ?? "";
     const attempts = [
-      getProduct(db, other, product.id),
-      updateProduct(db, other, product.id, { name: "Stolen" }),
-      addVariant(db, other, product.id, secondVariant()),
-      updateVariant(
-        db,
-        other,
-        variantId,
-        variantPatchSchema.parse({ price: "1" }),
-      ),
-      adjustStock(db, other, variantId, { delta: -1, reason: "DAMAGED" }),
-      listStockMovements(db, other, variantId),
+      () => getProduct(db, other, product.id),
+      () => updateProduct(db, other, product.id, { name: "Stolen" }),
+      () => addVariant(db, other, product.id, secondVariant()),
+      () =>
+        updateVariant(
+          db,
+          other,
+          variantId,
+          variantPatchSchema.parse({ price: "1" }),
+        ),
+      () => adjustStock(db, other, variantId, { delta: -1, reason: "DAMAGED" }),
+      () => listStockMovements(db, other, variantId),
     ];
     for (const attempt of attempts) {
-      await expect(attempt).rejects.toBeInstanceOf(NotFoundError);
+      await expect(attempt()).rejects.toBeInstanceOf(NotFoundError);
     }
     expect(await getProduct(db, owner, product.id)).toMatchObject({
       name: product.name,

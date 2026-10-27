@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { asc } from "drizzle-orm";
+import { asc, like } from "drizzle-orm";
 import postgres from "postgres";
 import { afterAll, describe, expect, inject, test } from "vitest";
 
@@ -79,6 +79,8 @@ describe("catalog constraints", () => {
     const rows = await db
       .select({ id: categoriesTable.id, name: categoriesTable.name })
       .from(categoriesTable)
+      // Other test files add categories to the same database.
+      .where(like(categoriesTable.id, "cat\\_%"))
       .orderBy(asc(categoriesTable.sortOrder));
     expect(rows.map((row) => row.name)).toEqual([
       "Regional packaged food",
