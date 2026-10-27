@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SignOutPageClient } from "~/app/auth/sign-out/[[...signout]]/page.client";
+import { SignOutPageClient } from "~/app/(starter)/auth/sign-out/[[...signout]]/page.client";
 import { getCurrentUserOrRedirect } from "~/lib/auth";
 import {
   PageHeader,

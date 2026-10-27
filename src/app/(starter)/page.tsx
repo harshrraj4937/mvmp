@@ -2,6 +2,11 @@ import { ArrowRight, Clock, ShoppingBag, Star, Truck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import {
+  categories,
+  featuredProductsHomepage,
+  testimonials,
+} from "~/app/mocks";
 import UkraineBanner from "~/ui/components/banners/ukraine-banner";
 import { HeroBadge } from "~/ui/components/hero-badge";
 import { ProductCard } from "~/ui/components/product-card";
@@ -14,8 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/ui/primitives/card";
-
-import { categories, featuredProductsHomepage, testimonials } from "./mocks";
 
 const featuresWhyChooseUs = [
   {

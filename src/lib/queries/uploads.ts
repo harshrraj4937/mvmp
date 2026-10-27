@@ -1,7 +1,7 @@
 import "server-only";
 import { desc, eq } from "drizzle-orm";
 
-import type { UserWithUploads } from "~/app/admin/summary/page.types";
+import type { UserWithUploads } from "~/app/(starter)/admin/summary/page.types";
 
 import { db } from "~/db";
 import { uploadsTable, userTable } from "~/db/schema";

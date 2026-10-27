@@ -9,8 +9,6 @@ import { SEO_CONFIG } from "~/app";
 import { ourFileRouter } from "~/app/api/uploadthing/core";
 import { CartProvider } from "~/lib/hooks/use-cart";
 import "~/css/globals.css";
-import { Footer } from "~/ui/components/footer";
-import { Header } from "~/ui/components/header/header";
 import { ThemeProvider } from "~/ui/components/theme-provider";
 import { Toaster } from "~/ui/primitives/sonner";
 
@@ -40,10 +38,7 @@ export default function RootLayout({
         className={`
           ${geistSans.variable}
           ${geistMono.variable}
-          min-h-screen bg-gradient-to-br from-white to-slate-100
-          text-neutral-900 antialiased
-          selection:bg-primary/80
-          dark:from-neutral-950 dark:to-neutral-900 dark:text-neutral-100
+          antialiased
         `}
       >
         <ThemeProvider
@@ -54,9 +49,7 @@ export default function RootLayout({
         >
           <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
           <CartProvider>
-            <Header showAuth={true} />
-            <main className={`flex min-h-screen flex-col`}>{children}</main>
-            <Footer />
+            {children}
             <Toaster />
           </CartProvider>
         </ThemeProvider>

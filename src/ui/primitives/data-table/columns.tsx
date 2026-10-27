@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { MoreHorizontal } from "lucide-react";
 
-import type { UserWithUploads } from "~/app/admin/summary/page.types";
+import type { UserWithUploads } from "~/app/(starter)/admin/summary/page.types";
 import type { GalleryMediaItem } from "~/ui/components/blocks/bento-media-gallery";
 
 import { Button } from "~/ui/primitives/button";
