@@ -55,6 +55,31 @@ export async function apiJson(response: {
   };
 }
 
+/**
+ * Fills form fields once React has hydrated them. Filling earlier races
+ * hydration, which resets controlled inputs. React attaches a
+ * `__reactProps$<id>` key to DOM nodes it has hydrated.
+ */
+export async function fillFields(
+  fields: [locator: Locator, value: string][],
+): Promise<void> {
+  for (const [locator] of fields) {
+    await locator.evaluate(async (element) => {
+      while (
+        !Object.keys(element).some((key) => key.startsWith("__reactProps"))
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    });
+  }
+  for (const [locator, value] of fields) {
+    await locator.fill(value);
+  }
+  for (const [locator, value] of fields) {
+    await expect(locator).toHaveValue(value);
+  }
+}
+
 /** Grants admin through the real CLI, using the E2E runner's environment. */
 export function grantAdminRole(email: string): void {
   execFileSync("bun", ["scripts/admin-grant.ts", email], { stdio: "pipe" });
@@ -143,29 +168,4 @@ export async function signUpFresh(page: Page, prefix: string): Promise<string> {
 
 export function uniqueEmail(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@e2e.gillu.test`;
-}
-
-/**
- * Fills form fields once React has hydrated them. Filling earlier races
- * hydration, which resets controlled inputs. React attaches a
- * `__reactProps$<id>` key to DOM nodes it has hydrated.
- */
-async function fillFields(
-  fields: [locator: Locator, value: string][],
-): Promise<void> {
-  for (const [locator] of fields) {
-    await locator.evaluate(async (element) => {
-      while (
-        !Object.keys(element).some((key) => key.startsWith("__reactProps"))
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-    });
-  }
-  for (const [locator, value] of fields) {
-    await locator.fill(value);
-  }
-  for (const [locator, value] of fields) {
-    await expect(locator).toHaveValue(value);
-  }
 }

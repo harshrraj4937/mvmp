@@ -29,6 +29,7 @@ export function Header({ showAuth = true }: HeaderProps) {
   const mainNavigation = [
     { href: "/", name: "Home" },
     { href: "/products", name: "Products" },
+    { href: "/merchant/onboarding", name: "Sell on Gillu" },
   ];
 
   const dashboardNavigation = [
