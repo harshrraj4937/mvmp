@@ -50,17 +50,17 @@ export function NotificationCenter({
 
   const handleMarkAsRead = useCallback(
     (id: string) => onMarkAsRead?.(id),
-    [onMarkAsRead]
+    [onMarkAsRead],
   );
 
   const handleMarkAllAsRead = useCallback(
     () => onMarkAllAsRead?.(),
-    [onMarkAllAsRead]
+    [onMarkAllAsRead],
   );
 
   const handleDismiss = useCallback(
     (id: string) => onDismiss?.(id),
-    [onDismiss]
+    [onDismiss],
   );
 
   const handleClearAll = useCallback(() => onClearAll?.(), [onClearAll]);

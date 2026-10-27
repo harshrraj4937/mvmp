@@ -157,8 +157,8 @@
 
 /* Banner animations */
 .banner-closing {
-  transition: height 500ms ease-out, opacity 500ms ease-out,
-    padding 500ms ease-out;
+  transition: height 500ms ease-out, opacity 500ms ease-out, padding 500ms
+    ease-out;
   overflow: hidden;
 }
 

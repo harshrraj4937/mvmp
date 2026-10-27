@@ -5,12 +5,9 @@
     "src/ui/primitives/data-table/columns.tsx",
     "src/ui/components/icons/reseui-icons/discord-icon.tsx",
     "src/ui/components/icons/reseui-icons/utils-factory.tsx",
-    "src/lib/queries/users.ts"
+    "src/lib/queries/users.ts",
+    "src/ui/components/banners/u24.tsx"
   ],
-  "ignoreDependencies": [
-    "tailwindcss-animate",
-    "@tanstack/react-form",
-    "nuqs",
-    "zod"
-  ]
+  "ignoreDependencies": ["tailwindcss-animate", "@tanstack/react-form", "nuqs"],
+  "entry": ["src/proxy.ts", "tests/integration/global-setup.ts", "scripts/*.ts"]
 }

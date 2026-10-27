@@ -14,13 +14,12 @@ let clientCounter = 0;
  * would otherwise share as 127.0.0.1.
  */
 export const test = base.extend({
-  // Playwright requires the fixture-dependencies object pattern here.
-  // eslint-disable-next-line no-empty-pattern
-  extraHTTPHeaders: async ({}, use, testInfo) => {
+  context: async ({ context }, use, testInfo) => {
     clientCounter += 1;
-    await use({
+    await context.setExtraHTTPHeaders({
       "x-forwarded-for": `198.51.100.${(testInfo.workerIndex * 50 + clientCounter) % 250}`,
     });
+    await use(context);
   },
 });
 
