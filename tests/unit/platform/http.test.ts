@@ -9,7 +9,10 @@ beforeAll(() => {
   vi.stubEnv("LOG_LEVEL", "fatal");
 });
 
-const http = () => import("~/platform/http");
+const http = async () => ({
+  ...(await import("~/platform/errors")),
+  ...(await import("~/platform/http")),
+});
 
 describe("errorResponse", () => {
   test("AppError subclasses map to the error shape with the request id", async () => {

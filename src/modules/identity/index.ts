@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { auth } from "~/lib/auth";
-import { ForbiddenError, UnauthorizedError } from "~/platform/http";
+import { ForbiddenError, UnauthorizedError } from "~/platform/errors";
 
 import { isAdmin } from "./domain/roles";
 
