@@ -51,7 +51,15 @@ Plan: docs/superpowers/plans/2026-10-27-gillu-phase-0-1-foundation.md
 - [ ] Deliver: running application with working authentication
 
 #### Baseline
-Not yet recorded.
+Recorded 2026-10-27 on `gillu/phase-0-1` after `bun install --frozen-lockfile` (bun 1.4.4, Node 26.7), before any Phase 1 code change:
+
+| Check | Result |
+|---|---|
+| `bun run typecheck` | PASS (exit 0) |
+| `bun run lint` (eslint) | FAIL — 59 problems (52 errors, 7 warnings). Files: `.tests/*.ts` (parse error: not in tsconfig project), `next.config.ts`, Polar files (`src/api/payments/service.ts`, `src/app/api/payments/*`, `src/app/dashboard/billing/page.client.tsx`, `src/ui/components/payments/PaymentForm.tsx`), `src/db/schema/index.ts`, `src/lib/auth.ts`, `src/lib/queries/uploads.ts`, `src/ui/components/product-card.tsx` — mostly perfectionist sort order |
+| `bunx biome check .` | FAIL — 16 errors (formatting + `useImportType`), same Polar files plus `src/lib/auth.ts`, `src/lib/queries/uploads.ts`, `src/ui/components/{product-card,notifications/notification-center,notifications/notifications}.tsx`, `.tests/*` |
+| `bun run knip` | FAIL — unused files `.tests/*`, `src/ui/components/banners/u24.tsx`; unused Polar exports in `src/api/payments/service.ts`; hint: `zod` listed in ignoreDependencies but unused |
+| `bun run build` (placeholder env) | PASS (exit 0). Logged non-fatal errors: GitHub-stars fetch to `regh.reliverse.org` (ENOTFOUND) and `getUsersWithUploads` DB connection refused during build |
 
 #### Verification
 Not yet run.
