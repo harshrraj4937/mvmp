@@ -17,6 +17,7 @@ export default async function AdminLayout({
         className="mb-6 flex gap-4 text-sm text-muted-foreground"
       >
         <Link href="/admin/merchants">Merchants</Link>
+        <Link href="/admin/categories">Categories</Link>
         <Link href="/admin/summary">Users &amp; uploads</Link>
       </nav>
       {children}
