@@ -38,13 +38,15 @@ export function CartSummary({
   );
 }
 
-/** The cart's lines as text, for checkout. Nothing here is editable. */
+/** The cart's lines as text, one parcel per shop, for checkout. */
 export function CheckoutLines({ groups }: { groups: CartGroupView[] }) {
   return (
     <div className="cart-groups">
-      {groups.map((group) => (
+      {groups.map((group, index) => (
         <section className="cart-group" key={group.shopSlug}>
-          <h2>{group.storeName}</h2>
+          <h3>
+            Parcel {index + 1} of {groups.length} · {group.storeName}
+          </h3>
           <ul className="cart-lines">
             {group.lines.map((line) => (
               <li className="checkout-line" key={line.variantId}>

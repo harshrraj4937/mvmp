@@ -204,6 +204,80 @@ export function productStory() {
   };
 }
 
+/** A published product with `stock` pieces for the signed-in approved shop. */
+export async function publishProduct(
+  page: Page,
+  name: string,
+  price: string,
+  stock = 4,
+): Promise<{ productId: string; slug: string; variantId: string }> {
+  const created = await apiJson(
+    await page.request.post("/api/v1/merchant/products", {
+      data: {
+        ...productStory(),
+        categoryId: "cat_snacks_and_sweets",
+        initialStock: stock,
+        name,
+        variant: {
+          heightMm: "60",
+          lengthMm: "120",
+          price,
+          sku: `ORD-${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+          weightGrams: "450",
+          widthMm: "120",
+        },
+      },
+    }),
+  );
+  expect(created.status).toBe(201);
+  const product = created.body.data as {
+    id: string;
+    slug: string;
+    variants: { id: string }[];
+  };
+  const image = await page.request.post(
+    `/api/v1/merchant/products/${product.id}/images`,
+    {
+      multipart: {
+        alt: name,
+        file: {
+          buffer: readFileSync("tests/fixtures/images/pixel.png"),
+          mimeType: "image/png",
+          name: "item.png",
+        },
+      },
+    },
+  );
+  expect(image.status()).toBe(201);
+  const published = await page.request.post(
+    `/api/v1/merchant/products/${product.id}/publish`,
+  );
+  expect(published.status()).toBe(200);
+  return {
+    productId: product.id,
+    slug: product.slug,
+    variantId: product.variants[0]?.id ?? "",
+  };
+}
+
+/** Saves a Goa delivery address for the signed-in shopper; returns its id. */
+export async function saveAddress(page: Page): Promise<string> {
+  const saved = await apiJson(
+    await page.request.post("/api/v1/account/addresses", {
+      data: {
+        city: "Panaji",
+        fullName: "Asha Naik",
+        line1: "12 Fontainhas Road",
+        phone: "9876543210",
+        postalCode: "403001",
+        state: "goa",
+      },
+    }),
+  );
+  expect(saved.status).toBe(201);
+  return (saved.body.data as { id: string }).id;
+}
+
 export async function sessionEmail(page: Page): Promise<null | string> {
   const response = await page.request.get("/api/auth/get-session");
   const body = (await response.json()) as null | { user?: { email?: string } };
@@ -259,6 +333,49 @@ export async function signUpFresh(page: Page, prefix: string): Promise<string> {
   });
   await expect(page).toHaveURL(/\/dashboard\/uploads/);
   return email;
+}
+
+/**
+ * Two approved makers with one product each (₹349 at shop A, signed in on
+ * `page`; ₹250 at shop B, on `makerB`) and a fresh signed-in shopper with one
+ * A and two B in their cart. The extra contexts stay open.
+ */
+export async function twoMakerCart(browser: Browser, page: Page) {
+  const tag = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+  const storeA = `Goa Kitchen ${tag}`;
+  const storeB = `Jaipur Clay ${tag}`;
+  const nameA = `Cashew brittle ${tag}`;
+  const nameB = `Clay diya ${tag}`;
+
+  await approvedMerchant(browser, page, storeA);
+  const itemA = await publishProduct(page, nameA, "₹349");
+
+  const makerB = await (await newClientContext(browser)).newPage();
+  await approvedMerchant(browser, makerB, storeB);
+  const itemB = await publishProduct(makerB, nameB, "₹250");
+
+  const shopper = await (await newClientContext(browser)).newPage();
+  const shopperEmail = await signUpFresh(shopper, "shopper");
+  for (const [variantId, quantity] of [
+    [itemA.variantId, 1],
+    [itemB.variantId, 2],
+  ] as const) {
+    const added = await shopper.request.post("/api/v1/cart/items", {
+      data: { quantity, variantId },
+    });
+    expect(added.status()).toBe(201);
+  }
+  return {
+    itemA,
+    itemB,
+    makerB,
+    nameA,
+    nameB,
+    shopper,
+    shopperEmail,
+    storeA,
+    storeB,
+  };
 }
 
 export function uniqueEmail(prefix: string): string {

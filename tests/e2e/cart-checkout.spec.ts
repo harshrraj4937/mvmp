@@ -170,10 +170,7 @@ test("a guest's cart survives sign-in and reaches checkout", async ({
   ).toBeVisible();
   await expect(shopper.getByText(nameA)).toBeVisible();
   await expect(
-    shopper.getByRole("button", { name: "Place order" }),
-  ).toBeDisabled();
-  await expect(
-    shopper.getByText("Ordering opens soon — your cart is saved."),
+    shopper.getByRole("heading", { name: "Deliver to" }),
   ).toBeVisible();
 
   // The header's cart fetch on this page already cleared the guest cookie.
