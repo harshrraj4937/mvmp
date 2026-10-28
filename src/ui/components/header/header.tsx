@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, X } from "lucide-react";
+import { Menu, ShoppingBag, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -8,7 +8,6 @@ import { useState } from "react";
 import { SEO_CONFIG } from "~/app";
 import { useCurrentUser } from "~/lib/auth-client";
 import { cn } from "~/lib/cn";
-import { Cart } from "~/ui/components/cart";
 import { Button } from "~/ui/primitives/button";
 import { Skeleton } from "~/ui/primitives/skeleton";
 
@@ -117,12 +116,13 @@ export function Header({ showAuth = true }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            {!isDashboard &&
-              (isPending ? (
-                <Skeleton className={`h-9 w-9 rounded-full`} />
-              ) : (
-                <Cart />
-              ))}
+            {!isDashboard && (
+              <Link aria-label="Your cart" href="/cart">
+                <Button size="icon" tabIndex={-1} variant="ghost">
+                  <ShoppingBag className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
 
             {isPending ? (
               <Skeleton className="h-9 w-9 rounded-full" />

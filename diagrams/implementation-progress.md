@@ -208,6 +208,15 @@ Run 2026-10-28 on `gillu/phase-4`:
 
 Final review: see the Phase 4 report below.
 
+Plan evaluation fix pass, 2026-10-28 (each fix RED→GREEN):
+
+| Check | Result |
+|---|---|
+| Finding: the template header on `/auth/sign-in` and `/auth/sign-up` showed a cart with hard-coded sample items ("Premium Wireless Headphones") while a shopper signed in for checkout | FIXED — template cart, its mock data, `CartProvider`/`use-cart`, and the primitives only it used (`sheet`, `drawer`, `use-media-query`, dependency `vaul`) removed; the header links to the real `/cart`. E2E `the sign-in and sign-up pages show no template cart with sample items` |
+| Finding: a suspended shop's cart group linked to its shop page, which 404s | FIXED — shop links need APPROVED and a complete story (`linkableShopIds`). Integration `a suspended shop is not linkable…` |
+| Finding: a sold-out line linked to its product page, which 404s once no size is in stock | FIXED — `productLinkable` on cart lines; the name links only when the page exists. Integration `a product with no stock left has no page…` and the cart `sold out and short` test |
+| Gate after the fixes | typecheck, lint, knip PASS; unit 237/237; integration 148/148; E2E 75/75 |
+
 ### Phase 5 — Internal Order System
 Status: NOT_STARTED
 

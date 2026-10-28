@@ -192,3 +192,19 @@ test("a guest's cart survives sign-in and reaches checkout", async ({
 
   await visitor.close();
 });
+
+test("the sign-in and sign-up pages show no template cart with sample items", async ({
+  page,
+}) => {
+  for (const path of ["/auth/sign-in?next=%2Fcheckout", "/auth/sign-up"]) {
+    await page.goto(path);
+    await expect(page.getByRole("button", { name: "Open cart" })).toHaveCount(
+      0,
+    );
+    await expect(page.getByText("Premium Wireless Headphones")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Your cart" })).toHaveAttribute(
+      "href",
+      "/cart",
+    );
+  }
+});

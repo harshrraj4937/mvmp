@@ -7,7 +7,6 @@ import { extractRouterConfig } from "uploadthing/server";
 
 import { SEO_CONFIG } from "~/app";
 import { ourFileRouter } from "~/app/api/uploadthing/core";
-import { CartProvider } from "~/lib/hooks/use-cart";
 import "~/css/globals.css";
 import { ThemeProvider } from "~/ui/components/theme-provider";
 import { Toaster } from "~/ui/primitives/sonner";
@@ -48,10 +47,8 @@ export default function RootLayout({
           enableSystem
         >
           <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
-          <CartProvider>
-            {children}
-            <Toaster />
-          </CartProvider>
+          {children}
+          <Toaster />
         </ThemeProvider>
         <SpeedInsights />
       </body>
