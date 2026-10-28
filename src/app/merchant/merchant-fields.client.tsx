@@ -42,9 +42,17 @@ interface FieldProps extends React.ComponentProps<"input"> {
   label: string;
 }
 
+/**
+ * `errors` is the page's error map keyed by API path (e.g.
+ * "businessAddress.line1"); `errorKey` is the address path ("businessAddress").
+ * Each message sits under its own input. `error` is only a fallback for
+ * address-level errors with no field to attach to.
+ */
 export function AddressFields({
   disabled,
   error,
+  errorKey,
+  errors,
   legend,
   onChange,
   prefix,
@@ -52,6 +60,8 @@ export function AddressFields({
 }: {
   disabled?: boolean;
   error?: string;
+  errorKey?: string;
+  errors?: Record<string, string>;
   legend: string;
   onChange: (value: AddressValues) => void;
   prefix: string;
@@ -62,10 +72,16 @@ export function AddressFields({
     (event: React.ChangeEvent<HTMLInputElement>) => {
       onChange({ ...value, [key]: event.target.value });
     };
+  const fieldError = (key: keyof AddressValues) =>
+    errorKey ? errors?.[`${errorKey}.${key}`] : undefined;
+  const hasFieldError = (
+    ["city", "line1", "line2", "postalCode", "state"] as const
+  ).some((key) => fieldError(key));
   return (
     <fieldset className="form-fieldset" disabled={disabled}>
       <legend>{legend}</legend>
       <Field
+        error={fieldError("line1")}
         id={`${prefix}-line1`}
         label="Address line 1"
         onChange={set("line1")}
@@ -73,6 +89,7 @@ export function AddressFields({
         value={value.line1}
       />
       <Field
+        error={fieldError("line2")}
         id={`${prefix}-line2`}
         label="Address line 2 (optional)"
         onChange={set("line2")}
@@ -80,6 +97,7 @@ export function AddressFields({
       />
       <div className="form-grid three">
         <Field
+          error={fieldError("city")}
           id={`${prefix}-city`}
           label="City"
           onChange={set("city")}
@@ -87,6 +105,7 @@ export function AddressFields({
           value={value.city}
         />
         <Field
+          error={fieldError("state")}
           id={`${prefix}-state`}
           label="State"
           onChange={set("state")}
@@ -94,6 +113,7 @@ export function AddressFields({
           value={value.state}
         />
         <Field
+          error={fieldError("postalCode")}
           id={`${prefix}-postalCode`}
           inputMode="numeric"
           label="PIN code"
@@ -102,7 +122,7 @@ export function AddressFields({
           value={value.postalCode}
         />
       </div>
-      {error && <p className="field-error">{error}</p>}
+      {error && !hasFieldError && <p className="field-error">{error}</p>}
     </fieldset>
   );
 }
@@ -249,6 +269,8 @@ export function ProfileFields({
         <AddressFields
           disabled={disabled("businessAddress")}
           error={errors.businessAddress}
+          errorKey="businessAddress"
+          errors={errors}
           legend="Business address"
           onChange={(businessAddress) => {
             onChange({ ...values, businessAddress });
@@ -260,6 +282,8 @@ export function ProfileFields({
           <AddressFields
             disabled={disabled("returnAddress")}
             error={errors.returnAddress}
+            errorKey="returnAddress"
+            errors={errors}
             legend="Return address"
             onChange={(returnAddress) => {
               onChange({ ...values, returnAddress });

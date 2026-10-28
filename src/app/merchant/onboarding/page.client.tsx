@@ -166,6 +166,8 @@ export function OnboardingForm({
             </label>
             {!pickupSame && (
               <AddressFields
+                errorKey="pickup.address"
+                errors={errors}
                 legend="Pickup location"
                 onChange={(address) => {
                   setPickup({ ...pickup, address });
