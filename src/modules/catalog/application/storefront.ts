@@ -43,6 +43,7 @@ export interface CartVariantInfo {
   declaredMrpPaise: null | number;
   merchantId: string;
   pricePaise: number;
+  productId: string;
   /** The product page exists: on sale with at least one variant in stock. */
   productLinkable: boolean;
   productName: string;
@@ -118,7 +119,7 @@ export interface StorefrontShop {
  * The subset of `merchantIds` whose shop page exists: APPROVED, with a
  * complete story. Only these shops are linked from the storefront and cart.
  */
-async function linkableShopIds(
+export async function linkableShopIds(
   db: Executor,
   merchantIds: string[],
 ): Promise<Set<string>> {
@@ -459,6 +460,7 @@ export async function getVariantsForCart(
     declaredMrpPaise: row.declaredMrpPaise,
     merchantId: row.merchantId,
     pricePaise: row.pricePaise,
+    productId: row.productId,
     productLinkable: withPage.has(row.productId),
     productName: row.productName,
     productSlug: row.productSlug,
