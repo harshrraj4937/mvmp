@@ -39,6 +39,18 @@ export {
   publishProduct,
   unpublishProduct,
 } from "./application/status";
+export {
+  type CartVariantInfo,
+  getStorefrontProduct,
+  getStorefrontShop,
+  getVariantsForCart,
+  searchStorefront,
+  type StorefrontCard,
+  storefrontHighlights,
+  type StorefrontProduct,
+  type StorefrontShop,
+  storyExcerpt,
+} from "./application/storefront";
 export { addVariant, updateVariant } from "./application/variants";
 export { readImageUpload } from "./presentation/image-upload";
 export {
@@ -53,3 +65,8 @@ export {
   variantCreateSchema,
   variantPatchSchema,
 } from "./presentation/schemas";
+export {
+  parseStorefrontSearchParams,
+  type StorefrontQuery,
+  storefrontQuerySchema,
+} from "./presentation/storefront-query";
