@@ -19,7 +19,7 @@ const optionalCode = (pattern: RegExp, message: string) =>
   );
 
 /** Indian mobile number, stored as +91XXXXXXXXXX. */
-const phoneSchema = z
+export const phoneSchema = z
   .string()
   .transform((value) => value.replace(/[\s()-]/g, ""))
   .pipe(

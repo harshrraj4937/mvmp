@@ -6,7 +6,7 @@ import {
   COMPOSITION_LABELS,
   MADE_HOW,
   type MadeHow,
-  STOCK_REASONS,
+  MERCHANT_STOCK_REASONS,
 } from "../domain/constants";
 import { isStateSlug, type StateSlug } from "../domain/indian-states";
 import { parseRupees } from "../domain/money";
@@ -233,7 +233,7 @@ export const stockAdjustmentSchema = z.object({
     (value) => (blank(value) ? undefined : value),
     z.string().trim().max(200).optional(),
   ),
-  reason: z.enum(STOCK_REASONS).exclude(["INITIAL"]),
+  reason: z.enum(MERCHANT_STOCK_REASONS),
 });
 
 export type Hold = z.output<typeof holdSchema>;

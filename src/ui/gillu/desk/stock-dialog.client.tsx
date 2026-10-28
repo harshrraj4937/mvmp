@@ -12,6 +12,8 @@ const REASON_LABELS: Record<string, string> = {
   CORRECTION: "Count correction",
   DAMAGED: "Damaged or expired",
   INITIAL: "Opening stock",
+  ORDER_RELEASED: "Order cancelled",
+  ORDER_RESERVED: "Held for an order",
   OTHER: "Something else",
   RESTOCK: "New stock arrived",
 };

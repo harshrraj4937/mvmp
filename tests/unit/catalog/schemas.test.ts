@@ -136,6 +136,14 @@ describe("stockAdjustmentSchema", () => {
         .success,
     ).toBe(false);
   });
+
+  test("merchant adjustment refuses order reasons", () => {
+    for (const reason of ["ORDER_RESERVED", "ORDER_RELEASED"]) {
+      expect(
+        stockAdjustmentSchema.safeParse({ delta: 1, reason }).success,
+      ).toBe(false);
+    }
+  });
 });
 
 describe("imagePatchSchema", () => {

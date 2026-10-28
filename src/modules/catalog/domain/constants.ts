@@ -1,9 +1,19 @@
 /** Variants at or below this stock show "Low stock" to the merchant. */
 export const LOW_STOCK_THRESHOLD = 5;
 
-/** Why a merchant changed stock; recorded on every inventory movement. */
+/** Why stock changed; recorded on every inventory movement. */
 export const STOCK_REASONS = [
   "INITIAL",
+  "RESTOCK",
+  "DAMAGED",
+  "CORRECTION",
+  "OTHER",
+  "ORDER_RESERVED",
+  "ORDER_RELEASED",
+] as const;
+
+/** The reasons a merchant may give for a stock adjustment. */
+export const MERCHANT_STOCK_REASONS = [
   "RESTOCK",
   "DAMAGED",
   "CORRECTION",
