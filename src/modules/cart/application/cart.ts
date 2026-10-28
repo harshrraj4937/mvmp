@@ -24,6 +24,8 @@ export interface CartGroupView {
 export interface CartLineView {
   available: number;
   coverImageUrl: null | string;
+  /** The product page exists; otherwise the line shows its name without a link. */
+  productLinkable: boolean;
   productName: string;
   productSlug: string;
   quantity: number;
@@ -458,6 +460,7 @@ async function viewFor(
     const line: CartLineView = {
       available: info.available,
       coverImageUrl: info.coverImageUrl,
+      productLinkable: info.productLinkable,
       productName: info.productName,
       productSlug: info.productSlug,
       quantity: item.quantity,

@@ -42,6 +42,8 @@ export interface CartVariantInfo {
   coverImageUrl: null | string;
   merchantId: string;
   pricePaise: number;
+  /** The product page exists: on sale with at least one variant in stock. */
+  productLinkable: boolean;
   productName: string;
   productSlug: string;
   /** The product is on sale and this variant is active (stock is `available`). */
@@ -62,7 +64,7 @@ export interface StorefrontCard {
   originState: null | StateSlug;
   priceFromPaise: number;
   productId: string;
-  /** False until the shop's story is complete: no link to its page. */
+  /** False unless the shop page exists (approved, story complete): no link to it. */
   shopLinkable: boolean;
   shopSlug: string;
   slug: string;
@@ -110,8 +112,11 @@ export interface StorefrontShop {
   story: string;
 }
 
-/** The subset of `merchantIds` whose shop story is complete. */
-async function completeShopIds(
+/**
+ * The subset of `merchantIds` whose shop page exists: APPROVED, with a
+ * complete story. Only these shops are linked from the storefront and cart.
+ */
+async function linkableShopIds(
   db: Executor,
   merchantIds: string[],
 ): Promise<Set<string>> {
@@ -127,7 +132,12 @@ async function completeShopIds(
         story: merchantsTable.story,
       })
       .from(merchantsTable)
-      .where(inArray(merchantsTable.id, merchantIds)),
+      .where(
+        and(
+          inArray(merchantsTable.id, merchantIds),
+          eq(merchantsTable.status, "APPROVED"),
+        ),
+      ),
     db
       .select({
         count: sql<number>`count(*)::int`,
@@ -327,7 +337,7 @@ export async function getStorefrontShop(
   if (!shop) {
     return null;
   }
-  const complete = await completeShopIds(db, [shop.id]);
+  const complete = await linkableShopIds(db, [shop.id]);
   const homeState = asStateSlug(shop.homeState);
   if (!complete.has(shop.id) || !shop.story || !shop.homePlace || !homeState) {
     return null;
@@ -385,6 +395,7 @@ export async function getVariantsForCart(
         coverImageUrl: coverSql,
         merchantId: merchantsTable.id,
         pricePaise: productVariantsTable.pricePaise,
+        productId: productsTable.id,
         productName: productsTable.name,
         productSlug: productsTable.slug,
         shopSlug: merchantsTable.slug,
@@ -434,14 +445,16 @@ export async function getVariantsForCart(
       ),
   ]);
   const onSale = new Set(saleable.map((row) => row.id));
-  const complete = await completeShopIds(db, [
-    ...new Set(rows.map((row) => row.merchantId)),
+  const [complete, withPage] = await Promise.all([
+    linkableShopIds(db, [...new Set(rows.map((row) => row.merchantId))]),
+    productIdsWithPage(db, [...new Set(rows.map((row) => row.productId))]),
   ]);
   return rows.map((row) => ({
     available: row.available,
     coverImageUrl: row.coverImageUrl,
     merchantId: row.merchantId,
     pricePaise: row.pricePaise,
+    productLinkable: withPage.has(row.productId),
     productName: row.productName,
     productSlug: row.productSlug,
     purchasable: onSale.has(row.variantId),
@@ -684,6 +697,40 @@ function likePattern(text: string): string {
   return `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }
 
+/** The subset of `productIds` that have a product page (see `getStorefrontProduct`). */
+async function productIdsWithPage(
+  db: Executor,
+  productIds: string[],
+): Promise<Set<string>> {
+  if (productIds.length === 0) {
+    return new Set();
+  }
+  const rows = await db
+    .selectDistinct({ id: productsTable.id })
+    .from(productsTable)
+    .innerJoin(merchantsTable, eq(merchantsTable.id, productsTable.merchantId))
+    .innerJoin(
+      categoriesTable,
+      eq(categoriesTable.id, productsTable.categoryId),
+    )
+    .innerJoin(
+      productVariantsTable,
+      eq(productVariantsTable.productId, productsTable.id),
+    )
+    .innerJoin(
+      inventoryTable,
+      eq(inventoryTable.variantId, productVariantsTable.id),
+    )
+    .where(
+      and(
+        ...productOnSale(),
+        ...sellableVariant(),
+        inArray(productsTable.id, productIds),
+      ),
+    );
+  return new Set(rows.map((row) => row.id));
+}
+
 async function regionCounts(
   db: Executor,
 ): Promise<{ count: number; name: string; slug: StateSlug }[]> {
@@ -745,7 +792,7 @@ async function toCards(
   db: Executor,
   rows: CardRow[],
 ): Promise<StorefrontCard[]> {
-  const complete = await completeShopIds(db, [
+  const complete = await linkableShopIds(db, [
     ...new Set(rows.map((row) => row.merchantId)),
   ]);
   return rows.map((row) => ({

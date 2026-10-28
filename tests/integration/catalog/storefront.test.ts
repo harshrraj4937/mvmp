@@ -5,6 +5,7 @@ import { afterAll, describe, expect, test } from "vitest";
 import { productsTable } from "~/db/schema";
 import { holdProduct } from "~/modules/catalog/application/admin";
 import { updateCategory } from "~/modules/catalog/application/categories";
+import { adjustStock } from "~/modules/catalog/application/inventory";
 import { createProduct } from "~/modules/catalog/application/products";
 import {
   archiveProduct,
@@ -313,5 +314,56 @@ describe("cart variant lookup", () => {
     const [inactive] = await getVariantsForCart(db, [largeId]);
     expect(inactive?.purchasable).toBe(false);
     expect(await getVariantsForCart(db, [createId()])).toEqual([]);
+  });
+
+  test("a suspended shop is not linkable, so the cart never links to its 404 page", async () => {
+    const shop = await seedApprovedMerchant(db);
+    const created = await published(shop, tagged());
+    const variantId = created.variants[0]?.id ?? "";
+    const [before] = await getVariantsForCart(db, [variantId]);
+    expect(before?.shopLinkable).toBe(true);
+
+    await suspendMerchant(db, await admin(), shop.merchantId);
+    const [after] = await getVariantsForCart(db, [variantId]);
+    expect(after?.shopLinkable).toBe(false);
+    expect(await getStorefrontShop(db, shop.slug)).toBeNull();
+  });
+
+  test("a product with no stock left has no page, so its lines are not linkable", async () => {
+    const shop = await seedApprovedMerchant(db);
+    const { created, largeId } = await twoSizes(
+      shop,
+      tagged(),
+      { initialStock: 2, price: "99" },
+      { initialStock: 2, price: "199" },
+    );
+    await publishProduct(db, shop, created.id);
+    const smallId = created.variants[0]?.id ?? "";
+    const linkable = async () =>
+      (await getVariantsForCart(db, [smallId, largeId]))
+        .map((info) => [info.variantLabel, info.productLinkable])
+        .sort();
+
+    expect(await linkable()).toEqual([
+      ["Large", true],
+      ["Small", true],
+    ]);
+
+    await adjustStock(db, shop, smallId, { delta: -2, reason: "DAMAGED" });
+    // The small size is sold out, but the product page still sells the large one.
+    expect(await linkable()).toEqual([
+      ["Large", true],
+      ["Small", true],
+    ]);
+    expect(
+      await getStorefrontProduct(db, shop.slug, created.slug),
+    ).not.toBeNull();
+
+    await adjustStock(db, shop, largeId, { delta: -2, reason: "DAMAGED" });
+    expect(await linkable()).toEqual([
+      ["Large", false],
+      ["Small", false],
+    ]);
+    expect(await getStorefrontProduct(db, shop.slug, created.slug)).toBeNull();
   });
 });

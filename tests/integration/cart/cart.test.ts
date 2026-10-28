@@ -254,13 +254,14 @@ describe("line status after adding", () => {
 
     await adjustStock(db, shop, variantId, { delta: -2, reason: "DAMAGED" });
     expect(
-      (await getCart(db, guest(token))).view.groups[0]?.lines[0]?.status,
-    ).toBe("short");
+      (await getCart(db, guest(token))).view.groups[0]?.lines[0],
+    ).toMatchObject({ productLinkable: true, status: "short" });
 
+    // The only size is sold out, so the product page is gone: no link to it.
     await adjustStock(db, shop, variantId, { delta: -3, reason: "DAMAGED" });
     expect(
-      (await getCart(db, guest(token))).view.groups[0]?.lines[0]?.status,
-    ).toBe("sold_out");
+      (await getCart(db, guest(token))).view.groups[0]?.lines[0],
+    ).toMatchObject({ productLinkable: false, status: "sold_out" });
   });
 
   test("a line whose product is no longer on sale is unavailable", async () => {

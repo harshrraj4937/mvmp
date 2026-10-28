@@ -155,7 +155,7 @@ A shop's story is complete when it has the text, a village or town, a state and 
 
 ## Cart
 
-The cart is server-side. A guest cart is identified by the `gillu_cart` cookie (httpOnly, SameSite Lax, 30 days, Secure in production); signing in merges it into the user's cart and clears the cookie (ADR-032). Every response is the cart view: `{ canCheckout, count, groups[{ shopSlug, storeName, shopLinkable, subtotalPaise, lines[] }], mergeDropped, totalPaise }`. Each line carries `status` (`ok`, `price_changed`, `short`, `sold_out`, `unavailable`), `quantity`, `available`, `unitPricePaise` and `seenPricePaise`.
+The cart is server-side. A guest cart is identified by the `gillu_cart` cookie (httpOnly, SameSite Lax, 30 days, Secure in production); signing in merges it into the user's cart and clears the cookie (ADR-032). Every response is the cart view: `{ canCheckout, count, groups[{ shopSlug, storeName, shopLinkable, subtotalPaise, lines[] }], mergeDropped, totalPaise }`. Each line carries `status` (`ok`, `price_changed`, `short`, `sold_out`, `unavailable`), `quantity`, `available`, `unitPricePaise`, `seenPricePaise` and `productLinkable` (the product page exists: on sale with a size in stock). A group's `shopLinkable` is true only for an APPROVED shop with a complete story, so the cart never links to a page that would 404.
 
 | Method & path | Body | Success | Errors |
 |---|---|---|---|

@@ -108,14 +108,14 @@ export function CartLines({ groups }: { groups: CartGroupView[] }) {
                     />
                   </div>
                   <div className="cart-line-body">
-                    {line.status === "unavailable" ? (
-                      <span className="cart-name">{name}</span>
-                    ) : (
+                    {line.productLinkable ? (
                       <Link
                         href={`/shops/${group.shopSlug}/${line.productSlug}`}
                       >
                         {name}
                       </Link>
+                    ) : (
+                      <span className="cart-name">{name}</span>
                     )}
                     {line.variantLabel && (
                       <p className="small muted">{line.variantLabel}</p>
