@@ -88,7 +88,7 @@ export function Footer({ className }: { className?: string }) {
                     text-muted-foreground
                     hover:text-foreground
                   `}
-                  href="/products"
+                  href="/explore"
                 >
                   All Products
                 </Link>
@@ -99,7 +99,7 @@ export function Footer({ className }: { className?: string }) {
                     text-muted-foreground
                     hover:text-foreground
                   `}
-                  href="/products?category=audio"
+                  href="/explore"
                 >
                   Audio
                 </Link>
@@ -110,7 +110,7 @@ export function Footer({ className }: { className?: string }) {
                     text-muted-foreground
                     hover:text-foreground
                   `}
-                  href="/products?category=wearables"
+                  href="/explore"
                 >
                   Wearables
                 </Link>
@@ -121,7 +121,7 @@ export function Footer({ className }: { className?: string }) {
                     text-muted-foreground
                     hover:text-foreground
                   `}
-                  href="/products?category=smartphones"
+                  href="/explore"
                 >
                   Smartphones
                 </Link>
@@ -132,7 +132,7 @@ export function Footer({ className }: { className?: string }) {
                     text-muted-foreground
                     hover:text-foreground
                   `}
-                  href="/products?category=laptops"
+                  href="/explore"
                 >
                   Laptops
                 </Link>

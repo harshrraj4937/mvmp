@@ -138,13 +138,13 @@ export function CartClient({ className, mockCart }: CartProps) {
                 </p>
                 {isDesktop ? (
                   <SheetClose asChild>
-                    <Link href="/products">
+                    <Link href="/explore">
                       <Button>Browse Products</Button>
                     </Link>
                   </SheetClose>
                 ) : (
                   <DrawerClose asChild>
-                    <Link href="/products">
+                    <Link href="/explore">
                       <Button>Browse Products</Button>
                     </Link>
                   </DrawerClose>
@@ -182,7 +182,7 @@ export function CartClient({ className, mockCart }: CartProps) {
                               line-clamp-2 text-sm font-medium
                               group-hover:text-primary
                             `}
-                            href={`/products/${item.id}`}
+                            href={"/explore"}
                             onClick={() => setIsOpen(false)}
                           >
                             {item.name}

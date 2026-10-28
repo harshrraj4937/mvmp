@@ -144,9 +144,3 @@ export function CartProvider({ children }: React.PropsWithChildren) {
 /* -------------------------------------------------------------------------- */
 /*                                 Hook                                      */
 /* -------------------------------------------------------------------------- */
-
-export function useCart(): CartContextType {
-  const ctx = React.use(CartContext);
-  if (!ctx) throw new Error("useCart must be used within a CartProvider");
-  return ctx;
-}
