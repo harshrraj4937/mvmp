@@ -8,6 +8,7 @@ import {
   listPickupLocations,
   requireApprovedMerchant,
 } from "~/modules/merchants";
+import { countMerchantOrders } from "~/modules/orders";
 import { DeskBadge } from "~/ui/gillu/desk/badge";
 import { Icon } from "~/ui/gillu/desk/icon";
 import { PageHeading } from "~/ui/gillu/desk/page-heading";
@@ -15,10 +16,11 @@ import { Panel } from "~/ui/gillu/desk/panel";
 
 export default async function MerchantDashboardPage() {
   const merchant = await requireApprovedMerchant("/merchant/dashboard");
-  const [profile, locations, counts] = await Promise.all([
+  const [profile, locations, counts, orders] = await Promise.all([
     getMerchantProfile(db, merchant),
     listPickupLocations(db, merchant),
     catalogCounts(db, merchant),
+    countMerchantOrders(db, merchant.merchantId),
   ]);
   const metrics = [
     ["Published", counts.byStatus.PUBLISHED, "Live in your shop", "PUBLISHED"],
@@ -59,6 +61,33 @@ export default async function MerchantDashboardPage() {
           src="/gillu/hero.webp"
           width={1400}
         />
+      </section>
+      <section aria-label="Your orders" className="metrics overview-metrics">
+        {(
+          [
+            [
+              "New orders",
+              orders.newOrders,
+              "Waiting for you to start",
+              "/merchant/orders?status=NEW",
+            ],
+            [
+              "Orders to pack",
+              orders.toPack,
+              "Being prepared or packed",
+              "/merchant/orders",
+            ],
+          ] as const
+        ).map(([label, value, note, href]) => (
+          <Link className="metric" href={href} key={label}>
+            <span className="metric-top">
+              {label}
+              <Icon name="arrow" />
+            </span>
+            <strong className="metric-value">{value}</strong>
+            <span className="metric-note">{note}</span>
+          </Link>
+        ))}
       </section>
       <section aria-label="Your catalog" className="metrics overview-metrics">
         {metrics.map(([label, value, note, status]) => (

@@ -49,7 +49,6 @@ export const RESERVATION_STATUSES = [
   "WRITTEN_OFF",
   "CONSUMED",
 ] as const;
-export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
 export const MAKER_CANCEL_REASONS = [
   "OUT_OF_STOCK",

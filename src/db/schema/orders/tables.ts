@@ -14,6 +14,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+import { ORDER_NUMBER_START } from "../../../modules/orders/domain/numbers";
 import {
   ACTOR_ROLES,
   FULFILMENT_STATUSES,
@@ -46,7 +47,7 @@ export const actorRoleEnum = pgEnum("actor_role", ACTOR_ROLES);
 
 /** GIL-1001, GIL-1002, … (parent design C4). */
 export const orderNumberSeq = pgSequence("order_number_seq", {
-  startWith: 1001,
+  startWith: ORDER_NUMBER_START,
 });
 
 const createdAt = () =>

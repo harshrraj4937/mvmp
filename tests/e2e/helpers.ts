@@ -193,6 +193,23 @@ export async function onboardMerchant(
   return (await response.json()) as ApiBody;
 }
 
+/** Places the shopper's cart from `twoMakerCart` as a COD order; returns its number. */
+export async function placeOrderViaApi(shopper: Page): Promise<string> {
+  const addressId = await saveAddress(shopper);
+  const placed = await apiJson(
+    await shopper.request.post("/api/v1/orders", {
+      data: {
+        addressId,
+        checkoutKey: `e2e_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        expectedTotalPaise: 84_900,
+        paymentMethod: "COD",
+      },
+    }),
+  );
+  expect(placed.status).toBe(201);
+  return (placed.body.data as { number: string }).number;
+}
+
 /** A filled-in product story, as the product API takes it. */
 export function productStory() {
   return {

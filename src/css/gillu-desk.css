@@ -2704,4 +2704,118 @@ html:has(.gillu-desk) {
     font-size: 15px;
     margin: 22px 0 10px;
   }
+
+  /* Orders */
+  .nav-badge {
+    background: var(--red);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: auto;
+    min-width: 18px;
+    padding: 1px 6px;
+    text-align: center;
+  }
+  .sign-out {
+    color: #786b5d;
+    cursor: pointer;
+    width: 100%;
+  }
+  .held {
+    color: #9a8b7a;
+    display: block;
+    font-size: 9px;
+  }
+  .order-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 16px;
+  }
+  .order-tab {
+    border: 1px solid #e5dac8;
+    border-radius: 999px;
+    color: #786b5d;
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  .order-tab.active {
+    background: #eadfd1;
+    border-color: #eadfd1;
+    color: var(--red);
+    font-weight: 600;
+  }
+  .merchant-orders-table {
+    min-width: 640px;
+  }
+  .merchant-orders-table a {
+    color: var(--red);
+    font-weight: 600;
+    text-decoration: underline;
+  }
+  .pager {
+    align-items: center;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .order-status-line {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0 0 12px;
+  }
+  .order-actions {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .cancel-form {
+    background: #fff;
+    border: 1px solid #e5dac8;
+    border-radius: 8px;
+    display: grid;
+    gap: 10px;
+    max-width: 520px;
+    padding: 16px;
+  }
+  .cancel-form fieldset {
+    border: 0;
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+  }
+  .cancel-form legend {
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .cancel-form .radio {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+  }
+  .cancel-form textarea {
+    border: 1px solid #d9cbb6;
+    border-radius: 6px;
+    font: inherit;
+    padding: 8px;
+  }
+  .order-total {
+    margin: 12px 0 4px;
+    text-align: right;
+  }
+  .order-address {
+    font-style: normal;
+    line-height: 1.6;
+  }
+  .order-history {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding-left: 18px;
+  }
 }

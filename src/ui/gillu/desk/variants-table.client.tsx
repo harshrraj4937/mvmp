@@ -101,7 +101,14 @@ export function VariantsTable({
                     ? "—"
                     : formatPaise(variant.declaredMrpPaise)}
                 </td>
-                <td>{variant.available}</td>
+                <td>
+                  {variant.available}
+                  {variant.reserved > 0 && (
+                    <span className="held">
+                      {variant.reserved} held for orders
+                    </span>
+                  )}
+                </td>
                 <td>{variant.isActive ? "On sale" : "Switched off"}</td>
                 {!readOnly && (
                   <td>

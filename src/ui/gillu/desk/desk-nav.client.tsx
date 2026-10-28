@@ -8,10 +8,13 @@ import { useEffect, useState } from "react";
 
 import type { DeskIconName } from "./desk-icons";
 
+import { SignOutButton } from "../sign-out.client";
 import { DeskSearch } from "./desk-search.client";
 import { Icon } from "./icon";
 
 export interface DeskNavItem {
+  /** A count shown beside the label when above zero. */
+  badge?: number;
   href: string;
   icon: DeskIconName;
   label: string;
@@ -102,6 +105,9 @@ export function DeskFrame({
                   >
                     <Icon name={item.icon} />
                     {item.label}
+                    {item.badge ? (
+                      <span className="nav-badge">{item.badge}</span>
+                    ) : null}
                   </Link>
                 );
               })}
@@ -109,6 +115,9 @@ export function DeskFrame({
           </>
         )}
         <div className="sidebar-bottom">
+          {merchant && (
+            <SignOutButton className="nav-link sign-out" onDone={close} />
+          )}
           <p className="sidebar-note">Local roots. Everyday joy.</p>
         </div>
       </aside>

@@ -1,39 +1,20 @@
-import type { Page } from "@playwright/test";
-
 import {
-  apiJson,
   expect,
   fillFields,
   newClientContext,
-  saveAddress,
+  placeOrderViaApi,
   sessionEmail,
   signUpFresh,
   test,
   twoMakerCart,
 } from "./helpers";
 
-async function placeOrder(shopper: Page): Promise<string> {
-  const addressId = await saveAddress(shopper);
-  const placed = await apiJson(
-    await shopper.request.post("/api/v1/orders", {
-      data: {
-        addressId,
-        checkoutKey: `e2e_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        expectedTotalPaise: 84_900,
-        paymentMethod: "COD",
-      },
-    }),
-  );
-  expect(placed.status).toBe(201);
-  return (placed.body.data as { number: string }).number;
-}
-
 test("a shopper sees their order and cancels one parcel", async ({
   browser,
   page,
 }) => {
   const { shopper, storeA, storeB } = await twoMakerCart(browser, page);
-  const number = await placeOrder(shopper);
+  const number = await placeOrderViaApi(shopper);
 
   await shopper.goto(`/orders/${number}?placed=1`);
   await expect(

@@ -13,16 +13,20 @@ test("an approved merchant sees the desk with real nav only", async ({
   await approvedMerchant(browser, page, "Channapatna Toys");
   await page.goto("/merchant/dashboard");
   const nav = page.getByRole("navigation", { name: "Merchant navigation" });
-  for (const name of ["Overview", "Products", "Store profile", "Shipping"]) {
+  for (const name of [
+    "Overview",
+    "Orders",
+    "Products",
+    "Store profile",
+    "Shipping",
+  ]) {
     await expect(nav.getByRole("link", { name })).toBeVisible();
   }
   await expect(nav.getByRole("link", { name: "Overview" })).toHaveAttribute(
     "aria-current",
     "page",
   );
-  await expect(nav.getByRole("link", { name: /Orders|Reviews/ })).toHaveCount(
-    0,
-  );
+  await expect(nav.getByRole("link", { name: /Reviews/ })).toHaveCount(0);
   await expect(page.getByText(/demo mode|sample/i)).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "A good day starts here." }),
