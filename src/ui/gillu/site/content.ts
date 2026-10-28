@@ -197,7 +197,8 @@ export const regions: Record<RegionKey, Region> = {
 };
 
 export const SITE_NAV = [
-  { href: "#discover", label: "Discover" },
-  { href: "#celebrations", label: "Festive edits" },
-  { href: "#our-story", label: "Our story" },
+  { href: "/explore", label: "Explore" },
+  { href: "/#discover", label: "Discover" },
+  { href: "/#celebrations", label: "Festive edits" },
+  { href: "/#our-story", label: "Our story" },
 ] as const;

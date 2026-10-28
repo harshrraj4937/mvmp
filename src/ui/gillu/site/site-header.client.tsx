@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { CartButton } from "../store/cart-button.client";
 import { SITE_NAV } from "./content";
 import { SiteIcon } from "./site-icons";
 
@@ -52,6 +53,7 @@ export function SiteHeader() {
           ))}
           <Link href="/auth/sign-in">Sign in</Link>
         </nav>
+        <CartButton />
         <a className="seller-nav" href="#sell">
           Sell on Gillu <SiteIcon className="icon" name="arrow-up" />
         </a>

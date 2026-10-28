@@ -1,0 +1,203 @@
+/* Store pages (explore, shop, product, cart). Scoped to .gillu-site, like the landing styles. */
+@scope (.gillu-site) {
+  .store {
+    min-height: 60vh;
+    overflow-wrap: anywhere;
+    padding-bottom: 64px;
+  }
+  .explore {
+    margin: 0 auto;
+    padding: 40px 0 0;
+    width: min(1200px, 100% - 32px);
+  }
+  .explore-head h1 {
+    color: var(--red);
+    font-family: var(--display);
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    margin: 0 0 4px;
+  }
+  .explore-layout {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 24px;
+  }
+  @media (min-width: 900px) {
+    .explore-layout {
+      grid-template-columns: 240px minmax(0, 1fr);
+    }
+  }
+  .explore-filters {
+    align-content: start;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+    padding: 20px;
+  }
+  .filter-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+  .filter-field label,
+  .made-fieldset legend {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .filter-field input,
+  .filter-field select {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font: inherit;
+    max-width: 100%;
+    min-height: 44px;
+    min-width: 0;
+    padding: 8px 10px;
+    width: 100%;
+  }
+  .search-row {
+    display: flex;
+    gap: 8px;
+  }
+  .search-row input {
+    flex: 1;
+    min-width: 0;
+  }
+  .made-fieldset {
+    border: 0;
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+  }
+  .made-option {
+    align-items: center;
+    display: flex;
+    font-size: 0.95rem;
+    gap: 8px;
+  }
+  .store-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .store-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .store-card-link {
+    color: inherit;
+    display: block;
+    height: 100%;
+    text-decoration: none;
+  }
+  .store-card-media {
+    aspect-ratio: 4 / 3;
+    background: var(--sage);
+    position: relative;
+  }
+  .store-card-media img {
+    object-fit: cover;
+  }
+  .store-card-body {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 12px 14px 16px;
+  }
+  .store-card h3 {
+    color: var(--ink);
+    font-family: var(--display);
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  .store-card-price {
+    color: var(--red);
+    font-weight: 600;
+    margin: 0;
+  }
+  .made-badge {
+    background: var(--sage);
+    border-radius: 999px;
+    color: var(--green);
+    font-size: 0.75rem;
+    justify-self: start;
+    padding: 2px 8px;
+  }
+  .explore .muted,
+  .store-card .muted {
+    color: var(--muted);
+  }
+  .small {
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  .empty-state {
+    color: var(--muted);
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+    padding: 48px 16px;
+    text-align: center;
+  }
+  .empty-icon {
+    color: var(--orange);
+    height: 64px;
+    width: 64px;
+  }
+  .pagination ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    list-style: none;
+    margin: 24px 0 0;
+    padding: 0;
+  }
+  .pagination a {
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--ink);
+    display: inline-flex;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 12px;
+    text-decoration: none;
+  }
+  .pagination a[aria-current="page"] {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+  .cart-button {
+    align-items: center;
+    color: inherit;
+    display: inline-flex;
+    gap: 6px;
+    text-decoration: none;
+  }
+  .cart-count {
+    align-items: center;
+    background: var(--orange);
+    border-radius: 999px;
+    color: #fff;
+    display: inline-flex;
+    font-size: 0.75rem;
+    justify-content: center;
+    min-width: 20px;
+    padding: 0 6px;
+    height: 20px;
+  }
+}

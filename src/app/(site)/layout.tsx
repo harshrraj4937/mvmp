@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import "~/css/gillu-site.css";
+import "~/css/gillu-store.css";
 import { dmSans, fraunces } from "~/ui/gillu/fonts";
 import { SiteIcons } from "~/ui/gillu/site/site-icons";
 import { SiteShell } from "~/ui/gillu/site/site-shell.client";
