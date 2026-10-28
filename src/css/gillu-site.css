@@ -198,6 +198,16 @@ html:has(.gillu-site) {
   .desktop-nav a:hover:after {
     width: 100%;
   }
+  .nav-button {
+    background: none;
+    border: 0;
+    color: inherit;
+    padding: 12px 0;
+    text-align: left;
+  }
+  .nav-button:hover {
+    color: var(--red);
+  }
   .seller-nav {
     display: flex;
     gap: 24px;

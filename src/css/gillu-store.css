@@ -737,4 +737,82 @@
     text-decoration: underline;
     text-underline-offset: 3px;
   }
+
+  .order-list {
+    display: grid;
+    gap: 12px;
+    list-style: none;
+    margin: 16px 0;
+    padding: 0;
+  }
+  .order-row {
+    align-items: center;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 700px) {
+    .order-row {
+      grid-template-columns: 140px 140px minmax(0, 1fr) auto;
+    }
+  }
+  .order-row a,
+  .text-link {
+    color: var(--red);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .order-row-statuses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .order-parcels {
+    display: grid;
+    gap: 4px;
+  }
+  .parcel-head {
+    align-items: start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .order-parcel h2 {
+    color: var(--red);
+    font-family: var(--display);
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  .order-status,
+  .tag {
+    background: var(--sage);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: 8px;
+    padding: 2px 10px;
+    white-space: nowrap;
+  }
+  .order-status[data-status="CANCELED"] {
+    background: #fdecea;
+    color: #8c1d18;
+  }
+  .confirm {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .summary-heading {
+    color: var(--red);
+    font-family: var(--display);
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  .order-address {
+    font-style: normal;
+    line-height: 1.5;
+  }
 }

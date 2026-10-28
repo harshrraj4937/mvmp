@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { useSession } from "~/lib/auth-client";
+
+import { SignOutButton } from "../sign-out.client";
 import { CartButton } from "../store/cart-button.client";
 import { SITE_NAV } from "./content";
 import { SiteIcon } from "./site-icons";
@@ -51,7 +54,7 @@ export function SiteHeader() {
               {item.label}
             </a>
           ))}
-          <Link href="/auth/sign-in">Sign in</Link>
+          <AccountLinks />
         </nav>
         <CartButton />
         <a className="seller-nav" href="#sell">
@@ -83,10 +86,28 @@ export function SiteHeader() {
             {item.label}
           </a>
         ))}
-        <Link href="/auth/sign-in" onClick={close}>
-          Sign in
-        </Link>
+        <AccountLinks onNavigate={close} />
       </nav>
     </header>
+  );
+}
+
+/** Signed in: "My orders" and "Sign out"; otherwise "Sign in". */
+function AccountLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const { data } = useSession();
+  if (!data?.user) {
+    return (
+      <Link href="/auth/sign-in" onClick={onNavigate}>
+        Sign in
+      </Link>
+    );
+  }
+  return (
+    <>
+      <Link href="/orders" onClick={onNavigate}>
+        My orders
+      </Link>
+      <SignOutButton className="nav-button" onDone={onNavigate} />
+    </>
   );
 }
