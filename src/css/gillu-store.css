@@ -457,4 +457,125 @@
     font-size: 1.5rem;
     margin: 32px 0 12px;
   }
+  .cart-page,
+  .checkout-page {
+    margin: 0 auto;
+    padding: 40px 0 0;
+    width: min(1100px, 100% - 32px);
+  }
+  .cart-page > h1,
+  .checkout-page > h1 {
+    color: var(--red);
+    font-family: var(--display);
+    font-size: clamp(2rem, 5vw, 2.6rem);
+    margin: 0 0 16px;
+  }
+  .cart-layout {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 900px) {
+    .cart-layout {
+      grid-template-columns: minmax(0, 1fr) 300px;
+      align-items: start;
+    }
+  }
+  .cart-group {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    margin-bottom: 16px;
+    padding: 16px 18px;
+  }
+  .cart-group h2 {
+    color: var(--red);
+    font-family: var(--display);
+    font-size: 1.3rem;
+    margin: 0 0 8px;
+  }
+  .cart-lines {
+    display: grid;
+    gap: 12px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .cart-line,
+  .checkout-line {
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+  .cart-line {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+  .cart-line-media {
+    aspect-ratio: 1 / 1;
+    background: var(--sage);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .cart-line-media img {
+    object-fit: cover;
+  }
+  .cart-line-body {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .cart-line-body p {
+    margin: 0;
+  }
+  .cart-name {
+    font-weight: 600;
+  }
+  .line-status {
+    color: var(--orange);
+    font-weight: 600;
+  }
+  .line-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+  .cart-subtotal {
+    font-weight: 600;
+    margin: 12px 0 0;
+    text-align: right;
+  }
+  .cart-summary {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+  }
+  .cart-summary p {
+    margin: 0;
+  }
+  .cart-total strong {
+    color: var(--red);
+    font-size: 1.2rem;
+  }
+  .checkout-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .checkout-page .cart-total {
+    margin: 16px 0;
+  }
+  .checkout-page .button[disabled],
+  .cart-summary .button[disabled] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 }

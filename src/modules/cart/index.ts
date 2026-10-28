@@ -17,4 +17,5 @@ export {
   parseCartBody,
   readCartOwner,
 } from "./presentation/cart-http";
+export { GUEST_CART_COOKIE } from "./presentation/guest-cookie";
 export { cartAddSchema, cartUpdateSchema } from "./presentation/schemas";
