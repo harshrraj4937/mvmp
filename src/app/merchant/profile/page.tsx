@@ -1,16 +1,22 @@
 import Image from "next/image";
 
 import { db } from "~/db";
-import { getMerchantProfile, requireMerchant } from "~/modules/merchants";
+import {
+  getMerchantProfile,
+  getMerchantStory,
+  requireMerchant,
+} from "~/modules/merchants";
 import { lockedFieldsFor } from "~/modules/merchants/domain/profile-rules";
 import { storeInitials } from "~/ui/gillu/desk/desk-shell";
 import { PageHeading } from "~/ui/gillu/desk/page-heading";
+import { StoryPanel } from "~/ui/gillu/desk/story-panel.client";
 
 import { ProfileForm } from "./page.client";
 
 export default async function MerchantProfilePage() {
   const merchant = await requireMerchant("/merchant/profile");
   const profile = await getMerchantProfile(db, merchant);
+  const story = await getMerchantStory(db, merchant);
 
   return (
     <>
@@ -46,6 +52,7 @@ export default async function MerchantProfilePage() {
           readOnly={merchant.role !== "owner"}
         />
       </div>
+      <StoryPanel story={story} />
     </>
   );
 }

@@ -2685,3 +2685,23 @@ html:has(.gillu-desk) {
     font-size: 12px;
   }
 }
+
+/* "Your story" on the profile page (Phase 4). */
+@scope (.gillu-desk) {
+  .story-panel {
+    margin-top: 22px;
+  }
+  .story-panel textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    font: inherit;
+    resize: vertical;
+  }
+  .story-panel h3 {
+    font-size: 15px;
+    margin: 22px 0 10px;
+  }
+}

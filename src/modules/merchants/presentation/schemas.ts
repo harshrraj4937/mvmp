@@ -138,7 +138,15 @@ export const merchantStoryPatchSchema = z
         .refine(isStateSlug, "Choose a state from the list.")
         .nullable(),
     ),
-    story: z.preprocess(blankToNull, text(150, 3000).nullable()),
+    story: z.preprocess(
+      blankToNull,
+      z
+        .string()
+        .trim()
+        .min(150, "Write at least 150 characters about your shop.")
+        .max(3000, "Keep your story to 3000 characters.")
+        .nullable(),
+    ),
   })
   .partial()
   .refine(
