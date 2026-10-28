@@ -40,6 +40,7 @@ const SHOP_PRODUCT_LIMIT = 1000;
 export interface CartVariantInfo {
   available: number;
   coverImageUrl: null | string;
+  declaredMrpPaise: null | number;
   merchantId: string;
   pricePaise: number;
   /** The product page exists: on sale with at least one variant in stock. */
@@ -50,6 +51,7 @@ export interface CartVariantInfo {
   purchasable: boolean;
   shopLinkable: boolean;
   shopSlug: string;
+  sku: string;
   storeName: string;
   variantId: string;
   variantLabel: null | string;
@@ -393,12 +395,14 @@ export async function getVariantsForCart(
       .select({
         available: inventoryTable.available,
         coverImageUrl: coverSql,
+        declaredMrpPaise: productVariantsTable.declaredMrpPaise,
         merchantId: merchantsTable.id,
         pricePaise: productVariantsTable.pricePaise,
         productId: productsTable.id,
         productName: productsTable.name,
         productSlug: productsTable.slug,
         shopSlug: merchantsTable.slug,
+        sku: productVariantsTable.sku,
         storeName: merchantsTable.storeName,
         variantId: productVariantsTable.id,
         variantLabel: productVariantsTable.label,
@@ -452,6 +456,7 @@ export async function getVariantsForCart(
   return rows.map((row) => ({
     available: row.available,
     coverImageUrl: row.coverImageUrl,
+    declaredMrpPaise: row.declaredMrpPaise,
     merchantId: row.merchantId,
     pricePaise: row.pricePaise,
     productLinkable: withPage.has(row.productId),
@@ -460,6 +465,7 @@ export async function getVariantsForCart(
     purchasable: onSale.has(row.variantId),
     shopLinkable: complete.has(row.merchantId),
     shopSlug: row.shopSlug,
+    sku: row.sku,
     storeName: row.storeName,
     variantId: row.variantId,
     variantLabel: row.variantLabel,

@@ -9,6 +9,8 @@ import {
   merchantStoryImagesTable,
   productImagesTable,
 } from "~/db/schema";
+import { createProduct } from "~/modules/catalog/application/products";
+import { publishProduct } from "~/modules/catalog/application/status";
 import { productCreateSchema } from "~/modules/catalog/presentation/schemas";
 import { submitMerchant } from "~/modules/merchants/application/profile";
 import { approveMerchant } from "~/modules/merchants/application/review";
@@ -81,6 +83,27 @@ export function productInput(
     },
     ...overrides,
   });
+}
+
+/** A published product with one variant at `price` rupees and `stock` units. */
+export async function publishedProduct(
+  db: Database,
+  shop: Awaited<ReturnType<typeof seedApprovedMerchant>>,
+  { price = "100", stock = 5 }: { price?: string; stock?: number } = {},
+) {
+  const created = await createProduct(
+    db,
+    shop,
+    productInput({ initialStock: stock }, { price }),
+  );
+  await addImageRow(db, created.id);
+  await publishProduct(db, shop, created.id);
+  return {
+    name: created.name,
+    productId: created.id,
+    slug: created.slug,
+    variantId: created.variants[0]?.id ?? "",
+  };
 }
 
 /**
