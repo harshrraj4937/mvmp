@@ -1,4 +1,61 @@
-import { expect, test } from "./helpers";
+import type { Page } from "@playwright/test";
+
+import { readFileSync } from "node:fs";
+
+import {
+  apiJson,
+  approvedMerchant,
+  expect,
+  newClientContext,
+  productStory,
+  test,
+} from "./helpers";
+
+const png = readFileSync("tests/fixtures/images/pixel.png");
+
+const unique = () =>
+  `${Date.now()}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
+
+/** A published Goa product, so the Goa region is live and the newest card is real. */
+async function publishGoaProduct(page: Page, name: string): Promise<void> {
+  const created = await apiJson(
+    await page.request.post("/api/v1/merchant/products", {
+      data: {
+        ...productStory(),
+        categoryId: "cat_snacks_and_sweets",
+        initialStock: 4,
+        name,
+        originPlace: "Mapusa",
+        originState: "goa",
+        variant: {
+          heightMm: "60",
+          lengthMm: "120",
+          price: "₹349",
+          sku: `LAND-${unique()}`,
+          weightGrams: "450",
+          widthMm: "120",
+        },
+      },
+    }),
+  );
+  expect(created.status).toBe(201);
+  const id = (created.body.data as { id: string }).id;
+  expect(
+    (
+      await page.request.post(`/api/v1/merchant/products/${id}/images`, {
+        multipart: {
+          alt: name,
+          file: { buffer: png, mimeType: "image/png", name: "item.png" },
+        },
+      })
+    ).status(),
+  ).toBe(201);
+  expect(
+    (
+      await page.request.post(`/api/v1/merchant/products/${id}/publish`)
+    ).status(),
+  ).toBe(200);
+}
 
 test("landing page renders every section without demo wording", async ({
   page,
@@ -20,28 +77,6 @@ test("landing page renders every section without demo wording", async ({
   await expect(
     page.locator('a[href*="shop.html"], a[href*="gillu-merchant-html"]'),
   ).toHaveCount(0);
-});
-
-test("collection filter and product dialog", async ({ page }) => {
-  await page.goto("/");
-  const cards = page.locator("#discover article:visible");
-  await page.getByRole("button", { name: "Handcrafted" }).click();
-  await expect(cards).toHaveCount(1);
-  await page.getByRole("button", { name: "All finds" }).click();
-  await expect(cards).toHaveCount(3);
-
-  const opener = page.getByRole("button", {
-    name: "Explore Mithai and memories",
-  });
-  await opener.click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText(
-    "Orders and reservations are not yet open",
-  );
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
-  await expect(opener).toBeFocused();
 });
 
 test("festival tabs work with the keyboard", async ({ page }) => {
@@ -92,4 +127,28 @@ test("phone width: no horizontal scroll and the mobile nav closes after a choice
   await expect(nav).toBeVisible();
   await nav.getByRole("link", { name: "Discover" }).click();
   await expect(nav).toBeHidden();
+});
+
+test("published products replace the previews, and the region links to explore", async ({
+  browser,
+  page,
+}) => {
+  const tag = unique();
+  const name = `Landing candy ${tag}`;
+  await approvedMerchant(browser, page, `Landing Kitchen ${tag}`);
+  await publishGoaProduct(page, name);
+
+  const visitor = await newClientContext(browser);
+  const shopper = await visitor.newPage();
+  await shopper.goto("/");
+  await expect(shopper.getByRole("link", { name })).toBeVisible();
+  await expect(shopper.getByText("Illustrative imagery")).toHaveCount(0);
+  await expect(
+    shopper.getByRole("link", { name: "Explore everything" }),
+  ).toHaveAttribute("href", "/explore");
+  await expect(shopper.locator('a[href="/explore?region=goa"]')).toBeVisible();
+  await expect(
+    shopper.getByRole("link", { name: "Explore the collection" }),
+  ).toHaveAttribute("href", "/explore");
+  await visitor.close();
 });

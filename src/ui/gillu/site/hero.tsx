@@ -36,7 +36,7 @@ export function Hero() {
           <br className="desktop-break" /> feel like home.
         </p>
         <div className="hero-actions">
-          <a className="button primary" href="#discover">
+          <a className="button primary" href="/explore">
             Explore the collection <SiteIcon className="icon" name="arrow-up" />
           </a>
           <a className="text-link" href="#our-story">

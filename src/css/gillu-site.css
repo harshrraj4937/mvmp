@@ -1859,7 +1859,7 @@ html:has(.gillu-site) {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
   }
-  .region-grid > button {
+  .region-grid > :is(button, a, .region-coming-soon) {
     position: relative;
     background: none;
     border: 0;
@@ -1870,16 +1870,18 @@ html:has(.gillu-site) {
     align-items: flex-start;
     transition: background .2s;
   }
-  .region-grid > button:first-child {
+  .region-grid > :is(button, a, .region-coming-soon):first-child {
     padding-left: 0;
   }
-  .region-grid > button + button {
+  .region-grid
+    > :is(button, a, .region-coming-soon)
+    + :is(button, a, .region-coming-soon) {
     border-left: 1px solid var(--line);
   }
-  .region-grid > button:hover {
+  .region-grid > :is(button, a, .region-coming-soon):hover {
     background: #f3ead9;
   }
-  .region-grid > button > span:first-child {
+  .region-grid > :is(button, a, .region-coming-soon) > span:first-child {
     font-size: 7px;
     letter-spacing: .1em;
     color: var(--muted);
@@ -1960,7 +1962,7 @@ html:has(.gillu-site) {
       flex-direction: column;
       gap: 12px;
     }
-    .region-grid > button {
+    .region-grid > :is(button, a, .region-coming-soon) {
       padding-inline: 16px;
     }
     .region-grid strong {
@@ -1996,14 +1998,14 @@ html:has(.gillu-site) {
       grid-template-columns: 1fr 1fr;
       gap: 22px 0;
     }
-    .region-grid > button {
+    .region-grid > :is(button, a, .region-coming-soon) {
       padding: 4px 14px;
     }
-    .region-grid > button:nth-child(odd) {
+    .region-grid > :is(button, a, .region-coming-soon):nth-child(odd) {
       padding-left: 0;
       border-left: 0;
     }
-    .region-grid > button > span:first-child {
+    .region-grid > :is(button, a, .region-coming-soon) > span:first-child {
       font-size: 7px;
       letter-spacing: .06em;
     }

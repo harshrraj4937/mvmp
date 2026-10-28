@@ -1,3 +1,5 @@
+import { db } from "~/db";
+import { storefrontHighlights } from "~/modules/catalog";
 import { Celebrations } from "~/ui/gillu/site/celebrations.client";
 import { Collection } from "~/ui/gillu/site/collection.client";
 import { EarlyAccess } from "~/ui/gillu/site/early-access.client";
@@ -11,7 +13,11 @@ import {
   Values,
 } from "~/ui/gillu/site/story";
 
-export default function HomePage() {
+/** Reads live products, so the page is rendered per request rather than at build. */
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const highlights = await storefrontHighlights(db);
   return (
     <>
       <Announcement />
@@ -19,7 +25,7 @@ export default function HomePage() {
       <main id="main">
         <Hero />
         <Ribbon />
-        <Collection />
+        <Collection highlights={highlights} />
         <Celebrations />
         <Story />
         <Values />

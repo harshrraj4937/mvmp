@@ -578,4 +578,11 @@
     cursor: not-allowed;
     opacity: 0.55;
   }
+  .region-coming-soon {
+    opacity: 0.75;
+  }
+  .coming-soon {
+    color: var(--orange) !important;
+    font-weight: 600;
+  }
 }

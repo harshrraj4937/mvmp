@@ -1,5 +1,6 @@
 /** Landing-page copy and preview content, from /opt/NH/gillu app.js @ eacfe57. */
 
+import type { StateSlug } from "~/modules/catalog/domain/indian-states";
 export type CollectionFilter = "all" | "craft" | "food" | "gifts";
 export interface Festival {
   alt: string;
@@ -17,6 +18,14 @@ export type FestivalKey = "diwali" | "onam" | "pongal";
 export type ProductPreviewKey = "diyas" | "gifts" | "sweets";
 
 export type RegionKey = "goa" | "kerala" | "maharashtra" | "rajasthan";
+
+/** The state each region card stands for, for region filters in explore. */
+export const REGION_STATE: Record<RegionKey, StateSlug> = {
+  goa: "goa",
+  kerala: "kerala",
+  maharashtra: "maharashtra",
+  rajasthan: "rajasthan",
+};
 
 export const FESTIVAL_ORDER: readonly FestivalKey[] = [
   "diwali",
