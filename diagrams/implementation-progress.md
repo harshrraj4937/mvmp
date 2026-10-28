@@ -130,12 +130,12 @@ Final review fix pass, 2026-10-27 (same branch):
 | `bun run test:e2e` | PASS — 27/27 |
 
 ### Phase 3 — Product Management
-Status: COMPLETED (UploadThing adapter code complete; manual verification NEEDS_INPUT)
+Status: COMPLETED
 Branch: `gillu/phase-3` (from `gillu/phase-2` @ 955c722). Also ports the Gillu UI (landing page, merchant desk) from `/opt/NH/gillu`.
 
 - [x] Categories — admin-managed (`/admin/categories`, API), seven seeded (migration 0004), public list
 - [x] Product CRUD — products with a default variant; variants own price/MRP/SKU/pack size/stock (ADR-027); tenant isolation (other shop → 404)
-- [x] Product images — JPEG/PNG/WebP by magic bytes, ≤ 4 MB, ≤ 8; `ImageStorage` port with local and UploadThing drivers (ADR-029). **UploadThing: code complete; manual verification NEEDS_INPUT (token); not run against UploadThing.**
+- [x] Product images — JPEG/PNG/WebP by magic bytes, ≤ 4 MB, ≤ 8; `ImageStorage` port with local and UploadThing drivers (ADR-029). **UploadThing: manually verified by the user on 2026-10-28 (uploads work against UploadThing).**
 - [x] Product status — direct publish for approved shops, guarded transitions, publish blockers, admin hold/release (ADR-028)
 - [x] Inventory — `inventory` + append-only `inventory_movements`
 - [x] Stock adjustment — guarded `available + delta >= 0` update with movement, never negative under concurrency (ADR-030)
@@ -157,7 +157,7 @@ Run 2026-10-27 on `gillu/phase-3` (gate, Task 13):
 | `bun run test:e2e` (Playwright, Chromium, includes production build) | PASS — 52/52 |
 | Compose smoke (isolated project `gillu-smoke`, port 18080, throwaway env) | PASS — all services healthy; `migrate` exited 0; `drizzle.__drizzle_migrations` has 5 rows; catalog tables exist; 7 categories; `GET /` → 200 Gillu landing; `GET /api/v1/categories` → 200 with 7 items; `GET /api/v1/merchant/products` → 401 `{"error":{"code":"unauthorized",…},"requestId":…}` with `no-store`; `/api/health` → 200; `down -v` removed only `gillu-smoke_*` volumes. `gillu_*` and `relivator_postgres_data` volumes still exist. |
 | Security boundaries | Catalog API needs an APPROVED shop (401/403, suspension on next request); product/variant/image ids of another shop → 404 (E2E + integration); `/admin/products` and `/admin/categories` → 404 for non-admins, no product names in HTML or forged RSC; admin API → 403; uploads checked by bytes (HTML disguised as JPEG refused); image route refuses path-escaping keys and sends `nosniff`; no secrets in client bundles (storage tokens read server-side only) |
-| UploadThing | NOT VERIFIED against the service — no token (NEEDS_INPUT). Compose default `uploadthing` → uploads answer 503 until a token is set |
+| UploadThing | VERIFIED MANUALLY by the user, 2026-10-28 (real token, uploads working). No automated test runs against the service; uploads answer 503 when no token is set |
 | Visual parity | Landing (360/768/1366) and desk pages (overview, products, profile, shipping at 1366/360) compared by screenshot with the source; differences recorded in the plan ledger |
 
 Final review fix pass, 2026-10-27 (same branch; fresh Opus reviewer, no Critical findings):
@@ -331,7 +331,7 @@ NEXT PHASE: 3 — Product Management
 ### Phase 3 report
 
 PHASE: 3 — Product Management (with the Gillu UI port)
-STATUS: COMPLETED (UploadThing image storage code complete; manual verification NEEDS_INPUT)
+STATUS: COMPLETED (UploadThing manually verified by the user, 2026-10-28)
 FEATURES IMPLEMENTED:
 - Gillu landing page at `/` and the Gillu merchant desk for `/merchant/*`, ported from `/opt/NH/gillu` to React/TypeScript with the source CSS kept in `@scope` (ADR-026); starter pages moved to the `(starter)` route group; demo-only behaviour dropped
 - Migration 0003 (additive): `categories`, `products`, `product_variants`, `product_images`, `inventory`, `inventory_movements`; 0004 seeds seven categories (`ON CONFLICT DO NOTHING`)
@@ -342,10 +342,10 @@ FILES CHANGED: `git diff --stat 955c722..gillu/phase-3` (197 files before this r
 TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke
 TEST RESULTS: unit 199/199, integration 99/99, E2E 53/53 after the final-review fix pass (gate before it: 198/98/52); typecheck/lint/knip pass; Compose smoke pass (5 migrations, 7 categories, landing 200, catalog API 401 JSON with requestId)
 KNOWN ISSUES:
-- UploadThing adapter not exercised against UploadThing (no token); Compose uploads answer 503 until `UPLOADTHING_TOKEN` is set
+- Uploads answer 503 when `UPLOADTHING_TOKEN` is not set (Compose default driver is `uploadthing`)
 - Landing previews (festivals, products) are illustrative until the Phase 4 storefront
 - Product card shows no SKU line and raw status text, unlike the source demo
 - Deferred final-review minors: see "Final review fix pass" under Phase 3 verification
 - Starter `/products` and `/dashboard/*` pages remain until Phase 4 equivalents exist
-BLOCKERS: none (UploadThing token blocks only its manual verification)
+BLOCKERS: none
 NEXT PHASE: 4 — Customer Storefront
