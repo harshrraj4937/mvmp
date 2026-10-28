@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isStateSlug } from "~/modules/catalog/domain/indian-states";
+
 import { RESERVED_SLUGS } from "../domain/slug";
 
 const text = (min: number, max: number) => z.string().trim().min(min).max(max);
@@ -119,6 +121,32 @@ export const profilePatchSchema = onboardingSchema
 
 export const rejectSchema = z.object({ reason: text(5, 500) });
 
+const blankToNull = (value: unknown) =>
+  value === null || (typeof value === "string" && value.trim() === "")
+    ? null
+    : value;
+
+/** The shop's story (spec §5.1); a blank field clears it. */
+export const merchantStoryPatchSchema = z
+  .object({
+    homePlace: z.preprocess(blankToNull, text(2, 60).nullable()),
+    homeState: z.preprocess(
+      blankToNull,
+      z
+        .string()
+        .trim()
+        .refine(isStateSlug, "Choose a state from the list.")
+        .nullable(),
+    ),
+    story: z.preprocess(blankToNull, text(150, 3000).nullable()),
+  })
+  .partial()
+  .refine(
+    (patch) => Object.keys(patch).length > 0,
+    "Change at least one field.",
+  );
+
+export type MerchantStoryPatch = z.output<typeof merchantStoryPatchSchema>;
 export type OnboardingInput = z.output<typeof onboardingSchema>;
 export type PickupLocationInput = z.output<typeof pickupLocationSchema>;
 export type PickupLocationPatch = z.output<typeof pickupLocationPatchSchema>;

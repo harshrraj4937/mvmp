@@ -13,3 +13,13 @@ export const STOCK_REASONS = [
 export const MAX_PRODUCT_IMAGES = 8;
 
 export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+/** How a product is made; exactly one per product. */
+export const MADE_HOW = ["HANDMADE", "HOMEMADE"] as const;
+export type MadeHow = (typeof MADE_HOW)[number];
+
+/** What a category calls a product's composition. */
+export const COMPOSITION_LABELS = ["INGREDIENTS", "MATERIALS"] as const;
+export type CompositionLabel = (typeof COMPOSITION_LABELS)[number];
+
+export const MAX_STORY_IMAGES = 6;

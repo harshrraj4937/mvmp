@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  categoryPatchSchema,
   imagePatchSchema,
   productCreateSchema,
   productListQuerySchema,
@@ -18,6 +19,13 @@ const variant = {
   weightGrams: 500,
   widthMm: 100,
 };
+
+const createInput = () => ({
+  categoryId: "cat_snacks_and_sweets",
+  initialStock: 5,
+  name: "Cashew chikki",
+  variant,
+});
 
 function issuesAt(
   result: { error?: { issues: { message: string; path: PropertyKey[] }[] } },
@@ -168,5 +176,62 @@ describe("productListQuerySchema", () => {
     expect(productListQuerySchema.safeParse({ status: "LIVE" }).success).toBe(
       false,
     );
+  });
+});
+
+describe("product story fields", () => {
+  test("product story fields: trimmed, limits, blank clears on patch", () => {
+    expect(productPatchSchema.parse({ originPlace: "  Malvan " })).toEqual({
+      originPlace: "Malvan",
+    });
+    expect(productPatchSchema.parse({ madeBy: "" })).toEqual({ madeBy: null });
+    expect(
+      productPatchSchema.safeParse({ originState: "atlantis" }).success,
+    ).toBe(false);
+    expect(productPatchSchema.safeParse({ madeHow: "FACTORY" }).success).toBe(
+      false,
+    );
+    expect(productPatchSchema.safeParse({ composition: "ab" }).success).toBe(
+      false,
+    );
+    expect(
+      productPatchSchema.safeParse({ composition: "x".repeat(1001) }).success,
+    ).toBe(false);
+    expect(
+      productPatchSchema.safeParse({ originPlace: "x".repeat(61) }).success,
+    ).toBe(false);
+    expect(
+      productPatchSchema.safeParse({ madeBy: "x".repeat(81) }).success,
+    ).toBe(false);
+    expect(
+      productPatchSchema.parse({ madeHow: "HOMEMADE", originState: "goa" }),
+    ).toEqual({ madeHow: "HOMEMADE", originState: "goa" });
+  });
+
+  test("story fields are optional on create and blanks are ignored", () => {
+    const base = productCreateSchema.parse(createInput());
+    expect(base.madeBy).toBeUndefined();
+    const withStory = productCreateSchema.parse({
+      ...createInput(),
+      composition: "Cashews, jaggery",
+      madeBy: "",
+      originState: "maharashtra",
+    });
+    expect(withStory).toMatchObject({
+      composition: "Cashews, jaggery",
+      originState: "maharashtra",
+    });
+    expect(withStory.madeBy).toBeUndefined();
+  });
+
+  test("categories take an ingredients or materials label", () => {
+    expect(
+      categoryPatchSchema.parse({ compositionLabel: "MATERIALS" }),
+    ).toEqual({
+      compositionLabel: "MATERIALS",
+    });
+    expect(
+      categoryPatchSchema.safeParse({ compositionLabel: "STUFF" }).success,
+    ).toBe(false);
   });
 });
