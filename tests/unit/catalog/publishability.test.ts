@@ -61,6 +61,8 @@ test("catalog limits", () => {
     "DAMAGED",
     "CORRECTION",
     "OTHER",
+    "ORDER_RESERVED",
+    "ORDER_RELEASED",
   ]);
   expect(MAX_PRODUCT_IMAGES).toBe(8);
   expect(MAX_IMAGE_BYTES).toBe(4 * 1024 * 1024);
