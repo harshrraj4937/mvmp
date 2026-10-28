@@ -4,6 +4,7 @@ import { isStateSlug } from "~/modules/catalog/domain/indian-states";
 import { phoneSchema } from "~/modules/merchants/presentation/schemas";
 
 import {
+  FULFILMENT_STATUSES,
   MAKER_CANCEL_REASONS,
   MERCHANT_STEPS,
   PAYMENT_METHODS,
@@ -57,6 +58,14 @@ export const shopperCancelSchema = z.object({
     .regex(/^GIL-\d+-[A-Z]+$/, "Invalid parcel number.")
     .optional(),
   reason: optionalText(300),
+});
+
+export const merchantOrderListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  status: z.preprocess(
+    blankToUndefined,
+    z.enum(FULFILMENT_STATUSES).optional(),
+  ),
 });
 
 export const merchantStatusSchema = z.object({

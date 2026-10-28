@@ -4,6 +4,7 @@ import {
   addressPatchSchema,
   addressSchema,
   merchantCancelSchema,
+  merchantOrderListQuerySchema,
   merchantStatusSchema,
   placeOrderSchema,
   shopperCancelSchema,
@@ -107,4 +108,20 @@ describe("order schemas", () => {
       merchantStatusSchema.safeParse({ to: "HANDED_TO_COURIER" }).success,
     ).toBe(false);
   });
+});
+
+test("merchant order list query", () => {
+  expect(merchantOrderListQuerySchema.parse({})).toEqual({ page: 1 });
+  expect(
+    merchantOrderListQuerySchema.parse({ page: "3", status: "PACKING" }),
+  ).toEqual({ page: 3, status: "PACKING" });
+  expect(merchantOrderListQuerySchema.parse({ status: "" })).toEqual({
+    page: 1,
+  });
+  expect(merchantOrderListQuerySchema.safeParse({ page: "0" }).success).toBe(
+    false,
+  );
+  expect(
+    merchantOrderListQuerySchema.safeParse({ status: "SHIPPED" }).success,
+  ).toBe(false);
 });

@@ -3,8 +3,18 @@ import { cookies } from "next/headers";
 import { db } from "~/db";
 import { applyCartCookie, getCart, GUEST_CART_COOKIE } from "~/modules/cart";
 import { authorizeSession } from "~/modules/identity";
-import { placeOrder, placeOrderSchema } from "~/modules/orders";
+import {
+  listShopperOrders,
+  placeOrder,
+  placeOrderSchema,
+} from "~/modules/orders";
 import { apiRoute, ok, parseJson } from "~/platform/http";
+
+/** The shopper's orders, newest first. */
+export const GET = apiRoute(async () => {
+  const user = await authorizeSession();
+  return ok(await listShopperOrders(db, user.id));
+});
 
 /** Places a cash-on-delivery order from the shopper's cart (spec §7). */
 export const POST = apiRoute(async (request) => {
