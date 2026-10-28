@@ -35,6 +35,15 @@ export {
   rejectMerchant,
   suspendMerchant,
 } from "./application/review";
+export {
+  addStoryImage,
+  deleteStoryImage,
+  getMerchantStory,
+  type MerchantStory,
+  type StoryImageView,
+  updateMerchantStory,
+  updateStoryImage,
+} from "./application/story";
 export type { MerchantRole } from "./domain/profile-rules";
 export {
   canSell,
@@ -42,6 +51,7 @@ export {
   type MerchantStatus,
 } from "./domain/status";
 export {
+  merchantStoryPatchSchema,
   onboardingSchema,
   pickupLocationCreateSchema,
   pickupLocationPatchSchema,

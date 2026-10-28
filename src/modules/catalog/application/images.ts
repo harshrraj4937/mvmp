@@ -1,19 +1,18 @@
 import { createId } from "@paralleldrive/cuid2";
 import { and, count, eq, max } from "drizzle-orm";
-import { imageSize } from "image-size";
 
 import type { Database } from "~/db";
 import type { MerchantContext } from "~/modules/merchants";
 
 import { productImagesTable, productsTable } from "~/db/schema";
-import { AppError, ConflictError, NotFoundError } from "~/platform/errors";
+import { ConflictError, NotFoundError } from "~/platform/errors";
 
 import type { ImagePatch } from "../presentation/schemas";
 import type { ImageStorage } from "./image-storage";
 import type { ProductImageView } from "./products";
 
-import { MAX_IMAGE_BYTES, MAX_PRODUCT_IMAGES } from "../domain/constants";
-import { detectImageType } from "../infrastructure/image-type";
+import { MAX_PRODUCT_IMAGES } from "../domain/constants";
+import { deleteStoredImage, inspectImage } from "./inspect-image";
 import { archivedProduct, type Executor, loadOwnedProduct } from "./shared";
 
 const imageColumns = {
@@ -26,8 +25,6 @@ const imageColumns = {
 };
 
 const imageNotFound = () => new NotFoundError("Image not found.");
-const invalidImage = () =>
-  new AppError("invalid_image", "Upload a JPEG, PNG or WebP image.", 400);
 
 /**
  * Checks the bytes (type by magic bytes, size, dimensions), stores them and
@@ -45,23 +42,7 @@ export async function addProductImage(
   if (product.status === "ARCHIVED") {
     throw archivedProduct();
   }
-  if (upload.bytes.byteLength > MAX_IMAGE_BYTES) {
-    throw new AppError(
-      "image_too_large",
-      "Images must be 4 MB or smaller.",
-      400,
-    );
-  }
-  const contentType = detectImageType(upload.bytes);
-  if (!contentType) {
-    throw invalidImage();
-  }
-  let size: { height: number; width: number };
-  try {
-    size = imageSize(upload.bytes);
-  } catch {
-    throw invalidImage();
-  }
+  const { contentType, ...size } = inspectImage(upload.bytes);
   await assertRoomForImage(db, productId);
 
   const stored = await storage.put({
@@ -102,7 +83,7 @@ export async function addProductImage(
       return row;
     });
   } catch (error) {
-    await deleteQuietly(storage, stored.key);
+    await deleteStoredImage(storage, stored.key);
     throw error;
   }
 }
@@ -138,7 +119,7 @@ export async function deleteProductImage(
       .where(eq(productImagesTable.id, owned.id));
     return owned;
   });
-  await deleteQuietly(storage, image.storageKey);
+  await deleteStoredImage(storage, image.storageKey);
 }
 
 export async function updateProductImage(
@@ -169,16 +150,6 @@ async function assertRoomForImage(db: Database, productId: string) {
     .where(eq(productImagesTable.productId, productId));
   if ((current?.images ?? 0) >= MAX_PRODUCT_IMAGES) {
     throw imageLimit();
-  }
-}
-
-async function deleteQuietly(storage: ImageStorage, key: string) {
-  try {
-    await storage.delete(key);
-  } catch (error) {
-    // Imported here: the logger reads server env, which services avoid.
-    const { logger } = await import("~/platform/logger");
-    logger.warn({ err: error, key }, "Could not delete a stored image.");
   }
 }
 
