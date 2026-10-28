@@ -1,6 +1,6 @@
 # Testing
 
-Status: Phase 2 — layers below are implemented and green as of 2026-10-27 (branch `gillu/phase-2`).
+Status: Phase 4 — layers below are implemented and green as of 2026-10-28 (branch `gillu/phase-4`).
 Governed by: [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md) §8, requirements §25.
 
 ## Prerequisites
@@ -52,7 +52,7 @@ Shared merchant fixtures: `tests/support/merchant-fixtures.ts`
 (1×1 JPEG/PNG/GIF and a 3×2 WebP). E2E `approvedMerchant(browser, page,
 storeName)` signs up, onboards, submits and has an admin approve the shop.
 
-## Current coverage (Phases 1–3)
+## Current coverage (Phases 1–4)
 
 | Suite | Tests |
 |---|---|
@@ -98,7 +98,22 @@ storeName)` signs up, onboards, submits and has an admin approve the shop.
 | `tests/e2e/catalog-api.spec.ts` | 401/403 (no shop, draft shop); create with "₹1,299", labelled variants, PNG upload served with nosniff, stock +5 and −999 (409), movements, publish; `?status` validated; disguised text upload `invalid_image`, non-multipart 400; another shop → 404 on read/edit/publish/stock/image delete; admin hold → `admin_hold`, non-admin 403, release; suspended shop → 403 |
 | `tests/e2e/merchant-products.spec.ts` | create → blockers → upload → publish → card "₹1,299", "12 in stock"; no-results search; add variant (names the first) and failed −5 adjustment; MRP below price field error; overview counts; archive confirm is final; edit a variant's price, recent stock changes, photo reorder and description; draft shop redirected |
 | `tests/e2e/admin-catalog.spec.ts` | categories add/duplicate/hide; non-admin 404/403 (HTML, forged RSC); public list; admin pauses a product → merchant sees reason, publish refused → release → republish; non-admin cannot see `/admin/products` |
+| `tests/unit/cart/guest-cookie.test.ts`, `tests/unit/cart/line-status.test.ts` | guest token shape and hashing, cookie options per environment; line status order (unavailable > sold out > short > price changed > ok) |
+| `tests/unit/catalog/storefront-query.test.ts`, `tests/unit/catalog/indian-states.test.ts` | lenient storefront params (bad values dropped, `q` cut to 100); strict API schema; state slugs |
+| `tests/unit/merchants/story.test.ts` | story text 150–3000 characters with paragraphs kept and blank clearing; state from the list; a shop is complete with text, place, state and a photo |
+| `tests/unit/store/seen-shops.test.ts` | seen-shops cookie: slug-shaped entries only, absent cookie empty, newest 50 kept, repeats move to the end, cookie name `gillu_seen_shops` |
+| `tests/unit/site/collection.test.tsx` | landing collection: previews with no live products; region links only where products exist; real cards and category links when live |
+| `tests/integration/catalog/storefront.test.ts` | exclusions (draft, unpublished, archived, held, sold out, inactive variant, hidden category, suspended shop); price from in-stock variants; category, made and region filters; `q` matches name, maker, place and composition with literal wildcards; sort and 24 per page; region counts; a shop without a story is not linkable; highlights; cart variant lookup |
+| `tests/integration/catalog/story.test.ts` | publish needs every story field and a complete shop story (`shop_story`); a published product cannot lose a story field; a published product without a story stays published; composition label follows the category |
+| `tests/integration/cart/cart.test.ts` | guest reads create nothing; the first add sets the cookie; quantities sum; `insufficient_stock`, `not_purchasable`, `cart_full` (31st line); line status for price change, sold out, short and unavailable; totals; merge on sign-in with the cap of 10, the 30-line drop and the seen price; concurrent adds of one variant end with one line |
+| `tests/e2e/storefront-api.spec.ts`, `tests/e2e/cart-api.spec.ts`, `tests/e2e/story-api.spec.ts` | public product and shop API; the cart API and its cookie; the story API needs a signed-in shop member, and a draft shop writes its story and uploads a photo |
+| `tests/e2e/explore.spec.ts`, `tests/e2e/product-page.spec.ts`, `tests/e2e/shop-page.spec.ts` | explore filters and pagination; product page with add to cart; shop page strip for returning visitors and full story for new ones |
+| `tests/e2e/merchant-story.spec.ts` | the desk story panel: text validation, place and state, photos added, reordered and removed; completeness status |
+| `tests/e2e/cart-checkout.spec.ts` | two shops in one cart; quantities, removal and totals; stock falls under a shopper's cart (short, then restocked); sign-in and checkout entry; Place order disabled |
+| `tests/e2e/landing.spec.ts` (Phase 4 addition) | live products replace the previews; the Goa region links to explore; the hero action goes to explore |
 | `tests/e2e/health.spec.ts` | `/api/health` ok + request id echo + no-store; pages get a generated request id |
+
+Phase 4 smoke (manual, project `gillu-smoke` on port 18080 with renamed containers, throwaway env, `down -v` for that project only): `migrate` exit 0; `drizzle.__drizzle_migrations` has 6 rows; `carts`, `cart_items`, `merchant_story_images` exist; `GET /` and `GET /explore` 200; `GET /api/v1/products` 200 with `items: []`; `GET /api/v1/cart` 200 empty with `no-store`; `GET /api/v1/shops/nope` 404 JSON with `requestId`.
 
 Deployment smoke (manual, Phases 1–3): `docker compose up --build -d --wait`, then
 `curl -H 'x-request-id: compose-smoke-0001' http://127.0.0.1:8080/api/health`,

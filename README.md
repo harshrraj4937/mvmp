@@ -4,6 +4,14 @@
 
 > **relivator** is a robust ecommerce template built with next.js and other modern technologies. it's designed for developers who want a fast, modern, and scalable foundation without reinventing the backend.
 
+## gillu
+
+This branch is the Gillu marketplace on the relivator template. Phase 4 adds the
+customer storefront: `/explore`, maker shop pages at `/shops/[shop]`, product pages
+at `/shops/[shop]/[product]`, and a server-side cart with checkout entry. Plans,
+decisions and the test plan live in [`docs/`](docs/) and [`diagrams/`](diagrams/),
+with the current tracker in [`diagrams/implementation-progress.md`](diagrams/implementation-progress.md).
+
 ## stack
 
 1. 🧱 **core**: [nextjs 16.4](https://nextjs.org) + [react 19.3](https://react.dev) + [ts 5.9](https://typescriptlang.org)

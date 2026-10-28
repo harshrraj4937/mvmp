@@ -440,3 +440,76 @@ exists for Phase 5 and is untouched.
 Consequence: stock never goes negative, also under concurrent adjustments
 (integration test with 20 concurrent decrements), and every change has an
 audit trail. Phase 5 reservations use the same guarded-update pattern.
+
+## ADR-031: A shop's story is complete before its products can publish
+
+Status: Accepted
+Date: 2026-10-28
+
+Decision: A shop's story is complete when it has the story text (150 to 3000
+characters), a village or town, a state from the list and at least one photo
+(`isShopStoryComplete`). A product publishes only when its shop's story is
+complete (publish blocker `shop_story`). Once the shop has a product on sale,
+its story stays complete: clearing the text or place, or deleting the last
+photo, is refused (`409 story_required`, `409 last_story_image`). A PUBLISHED
+product cannot clear its made-by, made-how, origin or composition fields
+(`409 story_required`); it must be unpublished first.
+
+Consequence: every shop page a shopper can open has a story, and every product
+has its origin and maker on record. The cost is that a maker must write a
+story and add a photo before any product goes live, and that a selling shop
+cannot quietly remove its story.
+
+## ADR-032: Server-side guest cart with a hashed cookie and a lazy merge
+
+Status: Accepted
+Date: 2026-10-28
+
+Decision: The cart lives on the server. A guest's cart is keyed by a random
+32-byte token in the `gillu_cart` cookie (httpOnly, SameSite Lax, 30 days,
+Secure in production); the database stores only its SHA-256 hash in
+`carts.guest_token_hash`. A signed-in shopper's cart is keyed by `user_id`.
+Sign-in does not merge at once: the first cart request that carries both a
+session and the guest cookie merges the guest cart into the user's cart in one
+transaction. Quantities sum and cap at 10 per line; lines beyond 30 are
+dropped and reported as `mergeDropped`. The cookie is then cleared. Each line
+keeps the price the shopper last saw (`unit_price_paise_seen`), so a price
+change shows before checkout, and checkout entry re-checks stock and status
+from the server; the checkout page reads the same cart view.
+
+Consequence: a cart survives reloads, and the client can never set a price or
+stock; the server returns the status of every line. Carts do not follow a shopper to
+another browser unless they sign in there. Every write locks the cart row, so
+concurrent adds of one variant end with one line (integration test).
+
+## ADR-033: Storefront URLs live under the shop
+
+Status: Accepted
+Date: 2026-10-28
+
+Decision: Product pages are `/shops/[shop]/[product]` and shop pages are
+`/shops/[shop]`, with the matching API under `/api/v1/shops/[shop]/...`. This
+replaces the `/shop/[merchantSlug]/[productSlug]` default in the Phase 4
+brief. Product slugs are unique per shop (`products_merchant_slug_unique`), so the
+pair of slugs identifies a product.
+
+Consequence: a product's URL shows who made it, and shop links need no lookup
+table. A product that is not purchasable is a 404 at its URL, and an
+unpublished product has no page. The cost is a longer URL.
+
+## ADR-034: Seen-shops cookie decides the story layout
+
+Status: Accepted
+Date: 2026-10-28
+
+Decision: A cookie `gillu_seen_shops` (Max-Age one year, SameSite Lax) lists
+the slugs of up to 50 shops the shopper has visited, newest last. On a shop
+page, a returning visitor sees a compact strip (store name, place, "Read their
+story") and the full story is rendered only when they open it; a first visit
+shows the full story. The cookie is written by the client after the page
+renders. Server code reads it with `cookies()`; only slug-shaped entries are
+kept.
+
+Consequence: returning visitors reach the products quickly, and nothing about
+a shopper is stored on the server. The cost is that the list is per browser,
+and clearing cookies shows the full story again.

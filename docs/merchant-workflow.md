@@ -1,8 +1,8 @@
 # Merchant Workflow
 
-Status: Phase 3 — onboarding, review, profile, pickup locations and the
-product catalog are implemented and verified (2026-10-27, branch
-`gillu/phase-3`).
+Status: Phase 4 — onboarding, review, profile, pickup locations, the product
+catalog and the shop story are implemented and verified (2026-10-28, branch
+`gillu/phase-4`; catalog verified 2026-10-27 on `gillu/phase-3`).
 
 Governed by: [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md), requirements §8, §14, §19.
 Decisions: ADR-022 to ADR-025 in [`diagrams/decisions.md`](../diagrams/decisions.md).
@@ -117,8 +117,32 @@ stateDiagram-v2
   product keeps at least one photo (`409 last_image`).
 - **Desk edit page:** edit a variant's price, MRP, SKU, name and pack size;
   adjust stock with the last 20 changes listed in the dialog.
-- **Purchasable** (for Phase 4): PUBLISHED, no hold, shop APPROVED,
-  category active, an active variant with stock (`listPurchasableProducts`).
+- **Purchasable** (the storefront rule): PUBLISHED, no hold, shop APPROVED,
+  category active, an active variant with stock (`productOnSale` and
+  `sellableVariant` in `catalog/application/storefront.ts`). Products
+  disappear from the storefront as soon as one of these stops holding.
+- **Publish checklist** (`publishBlockers`): category, variant, image,
+  origin, made by, made how, composition, and `shop_story`. A product that is
+  already PUBLISHED cannot clear its made-by, made-how, origin or composition
+  (`409 story_required`); unpublish it first.
+
+## Shop story (ADR-031)
+
+The shop's story is the page shoppers read about the maker. It is complete
+when it has all four of these:
+
+- the story text, at least 150 characters (up to 3000);
+- a village or town (`homePlace`, up to 60 characters);
+- a state from the list (`homeState`);
+- at least one photo (up to 6, JPEG, PNG or WebP, 4 MB each).
+
+While the shop has a product on sale, it stays complete: clearing the text or
+place, or deleting its last photo, is refused (`409 story_required`,
+`409 last_story_image`). Before any product can publish the shop's story must
+be complete. Staff can see and edit the story; only the owner changes the
+shop's details. The desk's **Your story** panel on `/merchant/profile` holds
+the text, place, state and photos. Photos can be reordered; the first one is
+the cover on the shop page.
 
 ## Locked fields (ADR-024)
 

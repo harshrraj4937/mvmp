@@ -6,7 +6,7 @@ session and passed (requirements §29). Status values: NOT_STARTED,
 IN_PROGRESS, COMPLETED, BLOCKED, NEEDS_INPUT.
 
 ## Current Phase
-Phase 4 — Customer Storefront (not started). Phase 3 COMPLETED on `gillu/phase-3` (not merged); Phase 2 COMPLETED on `gillu/phase-2` (not merged).
+Phase 5 — Internal Order System (not started). Phase 4 COMPLETED on `gillu/phase-4` (not merged); Phase 3 COMPLETED on `gillu/phase-3` (not merged); Phase 2 COMPLETED on `gillu/phase-2` (not merged).
 
 ## Audit Notes
 
@@ -176,16 +176,37 @@ Deferred minors (not fixed): concurrent same-name create can 500 on the slug con
 Note for Phase 4: landing festival/product previews are still illustrative content; the storefront should list from `listPurchasableProducts`.
 
 ### Phase 4 — Customer Storefront
-Status: NOT_STARTED
+Status: COMPLETED
+Branch: `gillu/phase-4` (from `gillu/phase-3` @ 48caf71). Not merged. Built on the unmerged Phase 3 branch.
 
-- [x] Integrate Gillu landing-page source — done in Phase 3 (`/`); previews still illustrative
-- [ ] Fetch products from DB
-- [ ] Product detail pages
-- [ ] Merchant shop pages
-- [ ] Search and filters
-- [ ] Cart
-- [ ] Customer login
-- [ ] Deliver: products from multiple merchants visible and purchasable up to checkout entry
+- [x] Fetch products from DB — `/explore` and `/api/v1/products` list purchasable products through `productOnSale()` and `sellableVariant()`, with price from in-stock variants
+- [x] Product detail pages — `/shops/[shop]/[product]` with gallery, sizes (sold-out sizes marked), low-stock note, add to cart, maker panel (ADR-033)
+- [x] Merchant shop pages — `/shops/[shop]` with the story and purchasable products; a shop shows only with a complete story (ADR-031)
+- [x] Search and filters — `/explore`: search text, category, region, made (handmade / homemade), sort, 24 per page, region counts
+- [x] Cart — server-side guest cart behind a hashed cookie, merged on sign-in (ADR-032); 10 per line, 30 lines; price-change acknowledgement and stock states; `/cart` page
+- [x] Customer login — sign-in and sign-up return to `next`; checkout needs a signed-in shopper (`/checkout`)
+- [x] Story and photos — merchant desk story panel and product story fields; migration 0005 (additive)
+- [x] Seen-shops cookie — returning visitors see the compact story strip (ADR-034)
+- [x] Landing wired to real products — collection shows the newest live products and category links; regions link to explore where they have products; previews remain until the first sale
+- [x] Deliver: products from multiple merchants visible and purchasable up to checkout entry (E2E `cart-checkout.spec.ts`, two shops in one cart)
+
+Place order stays disabled until Phase 5 (orders).
+
+#### Verification
+Run 2026-10-28 on `gillu/phase-4`:
+
+| Check | Result |
+|---|---|
+| `bun run typecheck` | PASS |
+| `bun run lint` (ESLint + Biome) | PASS |
+| `bunx knip` | PASS |
+| `bun run test:unit` (Vitest, `.test.ts` and `.test.tsx`) | PASS — 237/237 (25 files) |
+| `bun run test:integration` (Testcontainers Postgres 16) | PASS — 146/146 (16 files) |
+| `bun run test:e2e` (Playwright, Chromium, includes production build) | PASS — 74/74 (19 files) |
+| Compose smoke (isolated project `gillu-smoke`, port 18080, renamed containers, throwaway env) | PASS — `postgres`, `redis`, `web`, `nginx` healthy; `migrate` exited 0; `drizzle.__drizzle_migrations` has 6 rows; `carts`, `cart_items`, `merchant_story_images` exist; `GET /` 200; `GET /explore` 200; `GET /api/v1/products` 200 `{"data":{"items":[],…}}`; `GET /api/v1/cart` 200 empty with `no-store`; `GET /api/v1/shops/nope` 404 JSON with `requestId`; `down -v` removed only `gillu-smoke_*` volumes; `gillu_*` and `relivator_postgres_data` volumes still exist |
+| Security boundaries | Cart reads create nothing; cart lines for another guest are unreachable; hidden or unapproved products are 404 on the public API; story and photo writes are scoped to the caller's shop; cart rows locked on write; the guest token is stored only as its SHA-256 hash |
+
+Final review: see the Phase 4 report below.
 
 ### Phase 5 — Internal Order System
 Status: NOT_STARTED
@@ -349,3 +370,28 @@ KNOWN ISSUES:
 - Starter `/products` and `/dashboard/*` pages remain until Phase 4 equivalents exist
 BLOCKERS: none
 NEXT PHASE: 4 — Customer Storefront
+
+### Phase 4 report
+
+PHASE: 4 — Customer Storefront
+STATUS: COMPLETED (branch `gillu/phase-4`, not merged)
+FEATURES IMPLEMENTED:
+- Public storefront: `/explore` (search, category, region, made, sort, pagination, region counts), `/shops/[shop]` (story; strip for returning visitors), `/shops/[shop]/[product]` (gallery, sizes, add to cart, maker panel)
+- Public API: `GET /api/v1/products`, `GET /api/v1/shops/[shop]`, `GET /api/v1/shops/[shop]/products/[product]`
+- Cart: server-side guest cart (hashed `gillu_cart` cookie, ADR-032), lines capped at 10 and 30, merge on sign-in, `GET/POST /api/v1/cart`, `PATCH/DELETE /api/v1/cart/items/[variantId]`, `/cart` page with stock and price states
+- Checkout entry: `/checkout` for signed-in shoppers, read-only lines, Place order disabled until Phase 5
+- Shop story: merchant desk story panel, shop story photos (up to 6), `/api/v1/merchant/story*`, `shop_story` publish blocker, `story_required` and `last_story_image` (ADR-031)
+- Product story fields: made by, made how (handmade / homemade), origin, composition, with category-based composition labels
+- Landing: real products and categories once any shop sells; region cards link to explore or read "Coming soon"; hero action to explore
+- Migration 0005 (additive): `carts`, `cart_items`, `merchant_story_images`; new columns on `categories`, `products`, `merchants`; two enums
+FILES CHANGED: `git diff --shortstat gillu/phase-3..gillu/phase-4` — 121 files, +11,638 / −1,585 (15 commits before the docs commit); main areas: `src/app/(site)/**`, `src/app/api/v1/{cart,products,shops,merchant/story}/**`, `src/modules/{cart,catalog,merchants}/**`, `src/ui/gillu/{site,store,desk}/**`, `src/css/gillu-*.css`, `drizzle/0005_*`, `tests/**`, `docs/*`, `diagrams/*`
+TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke (project `gillu-smoke`)
+TEST RESULTS: unit 237/237, integration 146/146, E2E 74/74; typecheck, lint, knip pass; Compose smoke pass (6 migrations, new tables, storefront and cart endpoints, `down -v` for `gillu-smoke` only)
+KNOWN ISSUES:
+- Checkout cannot place an order; Phase 5 adds orders and reservations (`inventory.reserved` is untouched)
+- A cart is per browser until the shopper signs in; no cart sharing across devices
+- Landing previews stay visible until the first product is on sale
+- `/dashboard/*` starter pages remain (see architecture known gaps)
+- Google sign-in is code complete but not verified against Google (needs credentials, as in Phase 2)
+BLOCKERS: none
+NEXT PHASE: 5 — Internal Order System

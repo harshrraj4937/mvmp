@@ -1,6 +1,6 @@
 # API Contracts
 
-Status: Phase 3 — merchant, catalog and admin endpoints implemented and
+Status: Phase 4 — merchant, catalog, shop story, cart and admin endpoints implemented and
 verified (2026-10-27, branch `gillu/phase-3`).
 
 Governed by: [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md) §5.2, requirements §22. ADR-022.
@@ -136,7 +136,35 @@ Product summary fields: `id`, `name`, `slug`, `status`, `categoryName`,
 | Method & path | Success |
 |---|---|
 | `GET /categories` | 200 active categories (`id`, `name`, `slug`, `sortOrder`, `isActive`) in sort order; no session needed |
+| `GET /products` | 200 `{ items, page, pageSize: 24, total, regionCounts }` of purchasable products (ADR-028 rules plus a sellable variant). Query: `q` (text, cut to 100 characters), `category` (slug), `region` (state slug), `made` (`handmade` or `homemade`), `sort` (`newest`, `price_asc`, `price_desc`), `page` (≥ 1). Strict: an unknown or invalid value is `400 validation_failed` |
+| `GET /shops/{shop}` | 200 shop with its complete story (text, village or town, state, photos) and its products. 404 `not_found` when the shop is unknown, not approved, or its story is incomplete |
+| `GET /shops/{shop}/products/{product}` | 200 product with story, variants (`available`, `pricePaise`, `declaredMrpPaise`), images and the maker's shop link when the shop is linkable. 404 `not_found` unless the product is purchasable |
 | `GET /images/{key}` | 200 image bytes stored by the `local` driver, with its content type, `X-Content-Type-Options: nosniff` and `Cache-Control: public, max-age=31536000, immutable`; 404 for unknown keys, keys outside the image directory, or another driver |
+
+## Merchant story
+
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /merchant/story` | — | 200 story (`story`, `homePlace`, `homeState`, `images`, `complete`) | 401, 403 |
+| `PATCH /merchant/story` | `{ story?, homePlace?, homeState? }` — text at least 150 characters, place ≤ 60, state from the list | 200 story | 400, 409 `story_required` (a selling shop cannot clear its story) |
+| `POST /merchant/story/images` | multipart `file` (JPEG, PNG or WebP, ≤ 4 MB), optional `alt` | 201 story image | 400 `invalid_image`, 409 `image_limit` (at most 6 story photos) |
+| `PATCH /merchant/story/images/{imageId}` | `{ alt?, sortOrder? }` | 200 story image | 400, 404 for another shop's photo |
+| `DELETE /merchant/story/images/{imageId}` | — | 200 `{ data: null }` | 404, 409 `last_story_image` (a selling shop keeps its last photo) |
+
+A shop's story is complete when it has the text, a village or town, a state and at least one photo (`isShopStoryComplete`). Products publish only when their shop's story is complete (`shop_story` blocker).
+
+## Cart
+
+The cart is server-side. A guest cart is identified by the `gillu_cart` cookie (httpOnly, SameSite Lax, 30 days, Secure in production); signing in merges it into the user's cart and clears the cookie (ADR-032). Every response is the cart view: `{ canCheckout, count, groups[{ shopSlug, storeName, shopLinkable, subtotalPaise, lines[] }], mergeDropped, totalPaise }`. Each line carries `status` (`ok`, `price_changed`, `short`, `sold_out`, `unavailable`), `quantity`, `available`, `unitPricePaise` and `seenPricePaise`.
+
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /cart` | — | 200 cart view (creates nothing for a guest) | — |
+| `POST /cart/items` | `{ variantId, quantity }` (1–10) | 201 cart view | 400, 404 `Product not found.`, 409 `not_purchasable`, 409 `insufficient_stock` (`details.available`), 409 `line_full` (over 10 of one item), 409 `cart_full` (over 30 lines) |
+| `PATCH /cart/items/{variantId}` | `{ quantity }` or `{ acknowledgePrice: true }` | 200 cart view | 400, 404 `Item not in your cart.`, 409 `insufficient_stock`, 409 `line_full`, 409 `not_purchasable` |
+| `DELETE /cart/items/{variantId}` | — | 200 cart view | 404 `Item not in your cart.` |
+
+Writes need a JSON body (`application/json`, else 400). `insufficient_stock` says "This item is sold out." at zero and "Only N left." otherwise.
 
 ## Admin
 

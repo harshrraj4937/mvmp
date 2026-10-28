@@ -1,6 +1,6 @@
 # Database Design
 
-Status: Phase 3 — auth, uploads, merchant and catalog tables. Further marketplace
+Status: Phase 4 — auth, uploads, merchant, catalog, shop story and cart tables. Further marketplace
 tables follow the plan in [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md) §6.
 
 ## Workflow
@@ -23,6 +23,7 @@ tables follow the plan in [design](superpowers/specs/2026-10-27-gillu-marketplac
 | `0002_military_paibok` | Phase 2: enums `merchant_status`, `merchant_member_role`; tables `merchants`, `merchant_members`, `merchant_pickup_locations` with their foreign keys, indexes and CHECK — additive only (no DROP/ALTER of existing tables) |
 | `0003_cultured_wendell_vaughn` | Phase 3: enums `product_status`, `inventory_movement_reason`; tables `categories`, `products`, `product_variants`, `product_images`, `inventory`, `inventory_movements` with foreign keys, unique constraints, CHECKs and indexes — additive only |
 | `0004_seed_categories` | Custom migration: the seven launch categories (ids `cat_<slug>`), `ON CONFLICT DO NOTHING` so a re-run or an admin-created duplicate never fails |
+| `0005_bent_gamma_corps` | Phase 4: enums `composition_label` (INGREDIENTS, MATERIALS) and `made_how` (HANDMADE, HOMEMADE); tables `carts`, `cart_items`, `merchant_story_images` with foreign keys, unique constraints, CHECKs and indexes; new columns `categories.composition_label`, `products.composition`, `made_by`, `made_how`, `origin_place`, `origin_state`, `merchants.home_place`, `home_state`, `story`; indexes on product origin, made_how and `(status, published_at)`; a data update sets the craft categories to MATERIALS — additive only (no DROP, the data update touches only category labels) |
 
 ## Current tables
 
@@ -45,6 +46,10 @@ erDiagram
     product_variants ||--o{ inventory_movements : logs
     user |o--o{ inventory_movements : "actor"
     user |o--o{ products : "admin_hold_by"
+    user |o--o| carts : "owns when signed in"
+    carts ||--o{ cart_items : holds
+    product_variants ||--o{ cart_items : "in carts"
+    merchants ||--o{ merchant_story_images : shows
 ```
 
 | Table | Notes |
@@ -64,6 +69,9 @@ erDiagram
 | `product_variants` | `product_id` → `products` (cascade), `merchant_id` → `merchants` (restrict; denormalised for SKU scope); `label` (null only for a single default variant), `sku` unique per shop (`product_variants_merchant_sku_unique`); `price_paise` (bigint, CHECK > 0), `declared_mrp_paise` (CHECK ≥ price when set); `weight_grams`, `length_mm`, `width_mm`, `height_mm` (CHECK > 0); `is_active`; `sort_order` |
 | `product_images` | `product_id` → `products` (cascade); `storage_key`, `url`, `alt`, `width`, `height`, `bytes`, `content_type`, `sort_order`. Bytes live in image storage, never in Postgres |
 | `inventory` | One row per variant (`variant_id` PK → `product_variants`, cascade); `available`, `reserved` (both CHECK ≥ 0; `reserved` used from Phase 5) |
+| `carts` | One cart per signed-in user (`user_id` unique, cascade with user) or per guest (`guest_token_hash` unique: SHA-256 of the random cookie value, never the token itself). CHECK: exactly one owner. Created on the first write; read requests never create one |
+| `cart_items` | `cart_id` → `carts` and `variant_id` → `product_variants` (both cascade); `quantity` CHECK 1–10; `unit_price_paise_seen` (bigint) — the price the shopper last saw, compared with the live price to show a price change; unique (`cart_id`, `variant_id`); index on `variant_id` |
+| `merchant_story_images` | Shop photos: `merchant_id` → `merchants` (cascade); `storage_key`, `url`, `alt`, `width`, `height`, `bytes`, `content_type`, `sort_order`. Same byte rules and storage port as product images; index on `merchant_id` |
 | `inventory_movements` | Append-only log: `variant_id` → `product_variants` (cascade), `delta` (CHECK ≠ 0), `available_after`, `reason` enum (INITIAL, RESTOCK, DAMAGED, CORRECTION, OTHER), `note`, `actor_user_id` → `user` (set null); index on `variant_id` |
 
 Money is integer paise everywhere (ADR-027); no floating point. Stock only
@@ -71,7 +79,7 @@ changes through a guarded `UPDATE inventory SET available = available + $d
 WHERE variant_id = $v AND available + $d >= 0` in the same transaction as
 its movement row (ADR-030).
 
-All Phase 2 and 3 timestamps are `timestamptz`. Ids are text cuid2 values generated in the
+All Phase 2 to 4 timestamps are `timestamptz`. Ids are text cuid2 values generated in the
 application (`createId()`). The merchant and catalog schema files use relative imports because
 drizzle-kit does not resolve the `~` alias.
 
