@@ -383,4 +383,78 @@
   .maker-body p {
     margin: 0;
   }
+  .shop-page {
+    margin: 0 auto;
+    padding: 24px 0 0;
+    width: min(1200px, 100% - 32px);
+  }
+  .skip-link-inline {
+    color: var(--red);
+    display: inline-block;
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+  }
+  .shop-story h1,
+  .story-strip h1 {
+    color: var(--red);
+    font-family: var(--display);
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.05;
+    margin: 0 0 8px;
+  }
+  .shop-story .eyebrow {
+    color: var(--orange);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+  }
+  .shop-story-text p {
+    max-width: 68ch;
+  }
+  .shop-story-text p {
+    margin: 0 0 12px;
+  }
+  .shop-photos {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+    margin: 24px 0 0;
+  }
+  .shop-photo-cover {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .shop-photo,
+  .shop-photo-cover {
+    margin: 0;
+  }
+  .shop-photos img {
+    border-radius: 12px;
+    height: auto;
+    max-width: 100%;
+    width: 100%;
+  }
+  .story-strip {
+    align-items: start;
+    background: var(--sage);
+    border-radius: 16px;
+    display: grid;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+  }
+  .story-strip p {
+    margin: 0;
+  }
+  .story-strip .text-button {
+    justify-self: start;
+  }
+  .shop-page h2 {
+    color: var(--red);
+    font-family: var(--display);
+    font-size: 1.5rem;
+    margin: 32px 0 12px;
+  }
 }
