@@ -5,12 +5,24 @@ import {
   merchantMembersTable,
   merchantPickupLocationsTable,
   merchantsTable,
+  merchantStoryImagesTable,
 } from "./tables";
 
 export const merchantsRelations = relations(merchantsTable, ({ many }) => ({
   members: many(merchantMembersTable),
   pickupLocations: many(merchantPickupLocationsTable),
+  storyImages: many(merchantStoryImagesTable),
 }));
+
+export const merchantStoryImagesRelations = relations(
+  merchantStoryImagesTable,
+  ({ one }) => ({
+    merchant: one(merchantsTable, {
+      fields: [merchantStoryImagesTable.merchantId],
+      references: [merchantsTable.id],
+    }),
+  }),
+);
 
 export const merchantMembersRelations = relations(
   merchantMembersTable,

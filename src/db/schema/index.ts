@@ -1,3 +1,5 @@
+export * from "./cart/relations";
+export * from "./cart/tables";
 export * from "./catalog/relations";
 export * from "./catalog/tables";
 export * from "./merchants/relations";

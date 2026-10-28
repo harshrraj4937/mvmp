@@ -36,6 +36,13 @@
       "when": 1793112188553,
       "tag": "0004_seed_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793178349535,
+      "tag": "0005_bent_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

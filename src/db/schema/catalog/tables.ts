@@ -12,7 +12,11 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 
-import { STOCK_REASONS } from "../../../modules/catalog/domain/constants";
+import {
+  COMPOSITION_LABELS,
+  MADE_HOW,
+  STOCK_REASONS,
+} from "../../../modules/catalog/domain/constants";
 import { PRODUCT_STATUSES } from "../../../modules/catalog/domain/product-status";
 import { merchantsTable } from "../merchants/tables";
 import { userTable } from "../users/tables";
@@ -22,6 +26,13 @@ export const productStatusEnum = pgEnum("product_status", PRODUCT_STATUSES);
 export const inventoryMovementReasonEnum = pgEnum(
   "inventory_movement_reason",
   STOCK_REASONS,
+);
+
+export const madeHowEnum = pgEnum("made_how", MADE_HOW);
+
+export const compositionLabelEnum = pgEnum(
+  "composition_label",
+  COMPOSITION_LABELS,
 );
 
 const createdAt = () =>
@@ -36,6 +47,10 @@ const updatedAt = () =>
 export const categoriesTable = pgTable(
   "categories",
   {
+    // What product pages call the composition of products in this category.
+    compositionLabel: compositionLabelEnum("composition_label")
+      .default("INGREDIENTS")
+      .notNull(),
     createdAt: createdAt(),
     id: text("id").primaryKey(),
     isActive: boolean("is_active").default(true).notNull(),
@@ -62,14 +77,22 @@ export const productsTable = pgTable(
     categoryId: text("category_id")
       .notNull()
       .references(() => categoriesTable.id, { onDelete: "restrict" }),
+    // Ingredients or materials, labelled by the category.
+    composition: text("composition"),
     createdAt: createdAt(),
     currency: text("currency").default("INR").notNull(),
     description: text("description"),
     id: text("id").primaryKey(),
+    madeBy: text("made_by"),
+    madeHow: madeHowEnum("made_how"),
     merchantId: text("merchant_id")
       .notNull()
       .references(() => merchantsTable.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
+    // Village, town or district the product comes from.
+    originPlace: text("origin_place"),
+    // A slug from INDIAN_STATES.
+    originState: text("origin_state"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     slug: text("slug").notNull(),
     status: productStatusEnum("status").default("DRAFT").notNull(),
@@ -78,6 +101,12 @@ export const productsTable = pgTable(
   (table) => [
     unique("products_merchant_slug_unique").on(table.merchantId, table.slug),
     index("products_merchant_status_idx").on(table.merchantId, table.status),
+    index("products_origin_state_idx").on(table.originState),
+    index("products_made_how_idx").on(table.madeHow),
+    index("products_status_published_at_idx").on(
+      table.status,
+      table.publishedAt,
+    ),
     check("products_currency_inr", sql`${table.currency} = 'INR'`),
   ],
 );

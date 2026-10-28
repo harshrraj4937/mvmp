@@ -7,7 +7,7 @@ import { runMigrations } from "~/db/migrate";
 import { categoriesTable } from "~/db/schema";
 
 import { connectTestDb } from "../support/db";
-import { seedMerchant } from "../support/merchants";
+import { seedMerchant, seedUser } from "../support/merchants";
 
 async function listPublicTables(databaseUrl: string): Promise<string[]> {
   const sql = postgres(databaseUrl, { max: 1 });
@@ -163,6 +163,78 @@ describe("catalog constraints", () => {
       insertSku(first.merchantId, first.productId),
     ).rejects.toMatchObject({
       constraint_name: "product_variants_merchant_sku_unique",
+    });
+  });
+});
+
+describe("Phase 4 (migration 0005)", () => {
+  const { close, db } = connectTestDb();
+  const sql = postgres(inject("databaseUrl"), { max: 1 });
+
+  afterAll(async () => {
+    await close();
+    await sql.end();
+  });
+
+  test("adds story images and cart tables", async () => {
+    const tables = await listPublicTables(inject("databaseUrl"));
+    expect(tables).toEqual(
+      expect.arrayContaining(["merchant_story_images", "carts", "cart_items"]),
+    );
+  });
+
+  test("craft categories say materials, food categories ingredients", async () => {
+    const rows = await sql<{ composition_label: string; slug: string }[]>`
+      select slug, composition_label from categories where id like 'cat\\_%'
+    `;
+    const label = (slug: string) =>
+      rows.find((row) => row.slug === slug)?.composition_label;
+    expect(label("art-and-handicrafts")).toBe("MATERIALS");
+    expect(label("home-and-festive-decor")).toBe("MATERIALS");
+    expect(label("handmade-gifts")).toBe("MATERIALS");
+    expect(label("snacks-and-sweets")).toBe("INGREDIENTS");
+    expect(label("other-regional-products")).toBe("INGREDIENTS");
+  });
+
+  test("a cart has exactly one owner", async () => {
+    await expect(
+      sql`insert into carts (id) values (${createId()})`,
+    ).rejects.toMatchObject({ constraint_name: "carts_one_owner" });
+    await expect(
+      sql`
+        insert into carts (id, user_id, guest_token_hash)
+        values (${createId()}, ${await seedUser(db)}, ${createId()})
+      `,
+    ).rejects.toMatchObject({ constraint_name: "carts_one_owner" });
+  });
+
+  test("cart quantities stay between 1 and 10, one line per variant", async () => {
+    const merchant = await seedMerchant(db);
+    const productId = createId();
+    const variantId = createId();
+    await sql`
+      insert into products (id, merchant_id, category_id, name, slug)
+      values (${productId}, ${merchant.merchantId}, 'cat_handmade_gifts', 'Diya set', ${productId})
+    `;
+    await sql`
+      insert into product_variants (id, product_id, merchant_id, sku, price_paise, weight_grams, length_mm, width_mm, height_mm)
+      values (${variantId}, ${productId}, ${merchant.merchantId}, ${`SKU-${variantId}`}, 39900, 500, 100, 100, 50)
+    `;
+    const cartId = createId();
+    await sql`insert into carts (id, guest_token_hash) values (${cartId}, ${createId()})`;
+    const line = (quantity: number) => sql`
+      insert into cart_items (id, cart_id, variant_id, quantity, unit_price_paise_seen)
+      values (${createId()}, ${cartId}, ${variantId}, ${quantity}, 39900)
+    `;
+    await expect(line(11)).rejects.toMatchObject({
+      constraint_name: "cart_items_quantity_range",
+    });
+    await expect(line(0)).rejects.toMatchObject({
+      constraint_name: "cart_items_quantity_range",
+    });
+    await line(10);
+    await expect(line(1)).rejects.toMatchObject({
+      constraint_name: "cart_items_cart_variant_unique",
     });
   });
 });

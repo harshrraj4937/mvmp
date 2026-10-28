@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -48,6 +49,10 @@ export const merchantsTable = pgTable(
     description: text("description"),
     fssaiLicense: text("fssai_license"),
     gstin: text("gstin"),
+    // Village or town the shop's makers work in (shop story).
+    homePlace: text("home_place"),
+    // A slug from INDIAN_STATES (shop story).
+    homeState: text("home_state"),
     id: text("id").primaryKey(),
     logoUrl: text("logo_url"),
     pan: text("pan"),
@@ -60,6 +65,8 @@ export const merchantsTable = pgTable(
     slug: text("slug").notNull().unique(),
     status: merchantStatusEnum("status").default("DRAFT").notNull(),
     storeName: text("store_name").notNull(),
+    // The makers' story, shown on the shop page.
+    story: text("story"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     updatedAt: updatedAt(),
   },
@@ -122,5 +129,29 @@ export const merchantPickupLocationsTable = pgTable(
     uniqueIndex("merchant_pickup_locations_one_primary")
       .on(table.merchantId)
       .where(sql`${table.isPrimary}`),
+  ],
+);
+
+/** Photos of the makers at work, shown on the shop page (≤ 6, first = cover). */
+export const merchantStoryImagesTable = pgTable(
+  "merchant_story_images",
+  {
+    alt: text("alt").notNull(),
+    bytes: integer("bytes").notNull(),
+    contentType: text("content_type").notNull(),
+    createdAt: createdAt(),
+    height: integer("height").notNull(),
+    id: text("id").primaryKey(),
+    merchantId: text("merchant_id")
+      .notNull()
+      .references(() => merchantsTable.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    storageKey: text("storage_key").notNull(),
+    updatedAt: updatedAt(),
+    url: text("url").notNull(),
+    width: integer("width").notNull(),
+  },
+  (table) => [
+    index("merchant_story_images_merchant_id_idx").on(table.merchantId),
   ],
 );
