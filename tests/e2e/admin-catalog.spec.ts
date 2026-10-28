@@ -9,6 +9,7 @@ import {
   forgedAdminRscHeaders,
   grantAdminRole,
   newClientContext,
+  productStory,
   signUpFresh,
   test,
 } from "./helpers";
@@ -18,6 +19,7 @@ async function publishedProduct(page: Page, name: string): Promise<string> {
   const created = await apiJson(
     await page.request.post("/api/v1/merchant/products", {
       data: {
+        ...productStory(),
         categoryId: "cat_snacks_and_sweets",
         initialStock: 5,
         name,
@@ -165,4 +167,27 @@ test("non-admins cannot see product moderation", async ({ browser, page }) => {
   });
   expect(forged.headers()["content-type"]).toContain("text/x-component");
   expect(await forged.text()).not.toContain(name);
+});
+
+test("an admin sets whether a category lists ingredients or materials", async ({
+  page,
+}) => {
+  grantAdminRole(await signUpFresh(page, "labeladmin"));
+  const name = `Clay and stone ${Date.now()}`;
+  await page.goto("/admin/categories");
+  await page.getByLabel("New category").fill(name);
+  await page.getByRole("button", { name: "Add category" }).click();
+  const label = page.getByLabel(`Ingredients or materials for ${name}`);
+  await expect(label).toHaveValue("INGREDIENTS");
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/v1/admin/categories/") &&
+      response.request().method() === "PATCH",
+  );
+  await label.selectOption("MATERIALS");
+  expect((await saved).status()).toBe(200);
+  await page.reload();
+  await expect(
+    page.getByLabel(`Ingredients or materials for ${name}`),
+  ).toHaveValue("MATERIALS");
 });

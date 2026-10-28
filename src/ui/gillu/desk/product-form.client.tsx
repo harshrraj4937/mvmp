@@ -3,22 +3,35 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import type { CompositionLabel } from "~/modules/catalog/domain/constants";
+
 import { Field } from "~/app/merchant/merchant-fields.client";
 import { type ApiError, fieldErrors, sendJson } from "~/lib/api-client";
+
+import { StoryFields, type StoryValues } from "./story-fields.client";
 
 export const PRICE_LABEL = "Price customers pay (including delivery)";
 export const MRP_LABEL = "Declared MRP (as printed on the pack, if any)";
 
 interface CategoryOption {
+  compositionLabel: CompositionLabel;
   id: string;
   name: string;
 }
 
-interface DetailValues {
+interface DetailValues extends StoryValues {
   categoryId: string;
   description: string;
   name: string;
 }
+
+const STORY_KEYS = [
+  "composition",
+  "madeBy",
+  "madeHow",
+  "originPlace",
+  "originState",
+] as const;
 
 const VARIANT_KEYS = [
   "price",
@@ -37,18 +50,26 @@ type VariantKey = (typeof VARIANT_KEYS)[number];
 /** The new-product form: details, the first variant and opening stock. */
 export function NewProductForm({
   categories,
+  storeName,
 }: {
   categories: CategoryOption[];
+  /** Prefills "Who made it". */
+  storeName: string;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<CreateValues>({
     categoryId: "",
+    composition: "",
     description: "",
     heightMm: "",
     initialStock: "0",
     lengthMm: "",
+    madeBy: storeName,
+    madeHow: "",
     mrp: "",
     name: "",
+    originPlace: "",
+    originState: "",
     price: "",
     sku: "",
     weightGrams: "",
@@ -78,6 +99,7 @@ export function NewProductForm({
       "/api/v1/merchant/products",
       "POST",
       {
+        ...Object.fromEntries(STORY_KEYS.map((key) => [key, values[key]])),
         categoryId: values.categoryId,
         description: values.description,
         initialStock: values.initialStock,
@@ -100,6 +122,19 @@ export function NewProductForm({
       <section className="form-section">
         <h2>About the product</h2>
         <DetailFields
+          categories={categories}
+          errors={errors}
+          onChange={set}
+          values={values}
+        />
+      </section>
+      <section className="form-section">
+        <h2>Its story</h2>
+        <p className="muted">
+          Shoppers see where it comes from and who made it. You can save a draft
+          without these; they are needed to publish.
+        </p>
+        <ProductStoryFields
           categories={categories}
           errors={errors}
           onChange={set}
@@ -297,6 +332,15 @@ export function ProductDetailsForm({
           values={values}
         />
       </fieldset>
+      <fieldset className="form-fieldset" disabled={readOnly}>
+        <legend>Its story</legend>
+        <ProductStoryFields
+          categories={categories}
+          errors={errors}
+          onChange={set}
+          values={values}
+        />
+      </fieldset>
       {message && (
         <p
           className={message.error ? `notice danger` : "notice green"}
@@ -403,5 +447,32 @@ function DetailFields({
         )}
       </div>
     </div>
+  );
+}
+
+/** Story inputs, with the composition label of the chosen category. */
+function ProductStoryFields({
+  categories,
+  errors,
+  onChange,
+  values,
+}: {
+  categories: CategoryOption[];
+  errors: Record<string, string>;
+  onChange: (
+    key: keyof StoryValues,
+  ) => React.ChangeEventHandler<
+    HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  >;
+  values: DetailValues;
+}) {
+  const category = categories.find((option) => option.id === values.categoryId);
+  return (
+    <StoryFields
+      compositionLabel={category?.compositionLabel ?? "INGREDIENTS"}
+      errors={errors}
+      onChange={onChange}
+      values={values}
+    />
   );
 }

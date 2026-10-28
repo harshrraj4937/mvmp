@@ -7,6 +7,7 @@ import {
   type Page,
 } from "@playwright/test";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 import { validOnboarding } from "../support/merchant-fixtures";
 
@@ -63,10 +64,14 @@ export async function approvedMerchant(
   browser: Browser,
   page: Page,
   storeName: string,
+  { story = true }: { story?: boolean } = {},
 ): Promise<{ shopId: string }> {
   await signUpFresh(page, "approved");
   const created = await onboardMerchant(page, { storeName });
   const shopId = (created.data as { id: string }).id;
+  if (story) {
+    await completeShopStory(page);
+  }
   expect(
     (await page.request.post("/api/v1/merchant/profile/submit")).status(),
   ).toBe(200);
@@ -80,6 +85,28 @@ export async function approvedMerchant(
   expect(approved.status()).toBe(200);
   await context.close();
   return { shopId };
+}
+
+/** Writes the signed-in shop's story and uploads one photo, through the API. */
+export async function completeShopStory(page: Page): Promise<void> {
+  const saved = await page.request.patch("/api/v1/merchant/story", {
+    data: {
+      homePlace: "Malvan",
+      homeState: "maharashtra",
+      story: "We roast cashews in our courtyard kitchen by the sea. ".repeat(4),
+    },
+  });
+  expect(saved.status()).toBe(200);
+  const photo = await page.request.post("/api/v1/merchant/story/images", {
+    multipart: {
+      file: {
+        buffer: readFileSync("tests/fixtures/images/pixel.png"),
+        mimeType: "image/png",
+        name: "kitchen.png",
+      },
+    },
+  });
+  expect(photo.status()).toBe(201);
 }
 
 /**
@@ -105,6 +132,17 @@ export async function fillFields(
   for (const [locator, value] of fields) {
     await expect(locator).toHaveValue(value);
   }
+}
+
+/** Fills the product story inputs of the desk product forms. */
+export async function fillProductStory(page: Page): Promise<void> {
+  await page.locator("#originState").selectOption({ label: "Maharashtra" });
+  await fillFields([
+    [page.locator("#originPlace"), "Malvan"],
+    [page.locator("#madeBy"), "Lakshmi Sawant and her daughters"],
+    [page.locator("#composition"), "Cashews, jaggery, cardamom"],
+  ]);
+  await page.getByRole("radio", { name: "Homemade" }).check();
 }
 
 /**
@@ -153,6 +191,17 @@ export async function onboardMerchant(
   });
   expect(response.status()).toBe(201);
   return (await response.json()) as ApiBody;
+}
+
+/** A filled-in product story, as the product API takes it. */
+export function productStory() {
+  return {
+    composition: "Cashews, jaggery, cardamom",
+    madeBy: "Lakshmi Sawant and her daughters",
+    madeHow: "HOMEMADE",
+    originPlace: "Malvan",
+    originState: "maharashtra",
+  };
 }
 
 export async function sessionEmail(page: Page): Promise<null | string> {

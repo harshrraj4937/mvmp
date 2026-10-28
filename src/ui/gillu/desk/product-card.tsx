@@ -8,6 +8,8 @@ import { formatPaise } from "~/modules/catalog/domain/money";
 import { DeskBadge } from "./badge";
 import { Icon } from "./icon";
 
+const MADE_HOW_TEXT = { HANDMADE: "Handmade", HOMEMADE: "Homemade" } as const;
+
 const STATUS_TONE = {
   ARCHIVED: "danger",
   DRAFT: "neutral",
@@ -37,7 +39,10 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         <ProductStatusBadge status={product.status} />
       </div>
       <div className="product-info">
-        <p className="eyebrow">{product.categoryName}</p>
+        <p className="eyebrow">
+          {product.categoryName}
+          {product.madeHow && ` · ${MADE_HOW_TEXT[product.madeHow]}`}
+        </p>
         <h3>{product.name}</h3>
         {product.adminHoldReason && (
           <p className="small muted">Paused by Gillu</p>

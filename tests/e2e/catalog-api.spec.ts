@@ -9,6 +9,7 @@ import {
   grantAdminRole,
   newClientContext,
   onboardMerchant,
+  productStory,
   signUpFresh,
   test,
 } from "./helpers";
@@ -44,6 +45,7 @@ async function createProduct(page: Page): Promise<Product> {
 
 function productBody(price = "₹1,299") {
   return {
+    ...productStory(),
     categoryId: "cat_handmade_gifts",
     initialStock: 4,
     name: `Brass diya ${unique()}`,

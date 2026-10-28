@@ -4,6 +4,7 @@ import {
   approvedMerchant,
   expect,
   fillFields,
+  fillProductStory,
   onboardMerchant,
   signUpFresh,
   test,
@@ -12,10 +13,13 @@ import {
 const unique = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
 interface Draft {
+  category?: string;
   initialStock?: string;
   mrp?: string;
   name: string;
   price?: string;
+  /** Fill the product story too (default true). */
+  story?: boolean;
 }
 
 /** Fills the new-product form and saves it as a draft. */
@@ -26,7 +30,7 @@ async function saveDraft(page: Page, draft: Draft) {
   ).toBeVisible();
   await page
     .locator("#categoryId")
-    .selectOption({ label: "Snacks and sweets" });
+    .selectOption({ label: draft.category ?? "Snacks and sweets" });
   await fillFields([
     [page.locator("#name"), draft.name],
     [
@@ -42,6 +46,12 @@ async function saveDraft(page: Page, draft: Draft) {
     [page.locator("#heightMm"), "60"],
     [page.locator("#initialStock"), draft.initialStock ?? "12"],
   ]);
+  if (draft.story !== false) {
+    await fillProductStory(page);
+  } else {
+    // "Who made it" is prefilled with the shop name; a story-less draft clears it.
+    await page.locator("#madeBy").fill("");
+  }
   await page.getByRole("button", { name: "Save draft" }).click();
 }
 
@@ -196,6 +206,79 @@ test("a merchant edits a variant, sees stock history and arranges photos", async
   await expect(page.locator(".product-images img").nth(1)).toHaveAttribute(
     "alt",
     "Rolls on a brass plate",
+  );
+});
+
+test("publishing lists the missing story", async ({ browser, page }) => {
+  await approvedMerchant(browser, page, `No Story Yet ${unique()}`, {
+    story: false,
+  });
+  await saveDraft(page, { name: `Plain chikki ${unique()}`, story: false });
+  await uploadPixel(page);
+  const blockers = page.getByRole("list", { name: "Before you can publish:" });
+  await expect(blockers).toContainText("Say where it comes from");
+  await expect(blockers).toContainText("Say who made it");
+  await expect(blockers).toContainText("Choose handmade or homemade");
+  await expect(blockers).toContainText("List its ingredients");
+  await expect(
+    blockers.getByRole("link", { name: "Finish your shop's story" }),
+  ).toHaveAttribute("href", "/merchant/profile#story");
+  await page.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Add what is missing before publishing.",
+  );
+});
+
+test("a merchant fills a product's story and publishes it", async ({
+  browser,
+  page,
+}) => {
+  const store = `Malvani Kitchen ${unique()}`;
+  await approvedMerchant(browser, page, store);
+  await page.goto("/merchant/products/new");
+  await expect(page.locator("#madeBy")).toHaveValue(store);
+  await saveDraft(page, { name: `Kokum syrup ${unique()}` });
+  await expect(
+    page.getByRole("heading", { name: "A little product polish." }),
+  ).toBeVisible();
+  await uploadPixel(page);
+  await expect(
+    page.getByRole("list", { name: "Before you can publish:" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Publish" }).click();
+  await expect(page.locator(".badge", { hasText: "PUBLISHED" })).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator("#originState")).toHaveValue("maharashtra");
+  await expect(page.locator("#originPlace")).toHaveValue("Malvan");
+  await expect(page.locator("#madeBy")).toHaveValue(
+    "Lakshmi Sawant and her daughters",
+  );
+  await expect(page.getByRole("radio", { name: "Homemade" })).toBeChecked();
+
+  await fillFields([[page.locator("#madeBy"), ""]]);
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "A published product needs its story.",
+  );
+});
+
+test("the composition label follows the category", async ({
+  browser,
+  page,
+}) => {
+  await approvedMerchant(browser, page, `Label Shop ${unique()}`);
+  await page.goto("/merchant/products/new");
+  await expect(
+    page.getByRole("heading", { name: "Add to your collection." }),
+  ).toBeVisible();
+  await page.locator("#categoryId").selectOption({ label: "Handmade gifts" });
+  await expect(page.locator("label[for=composition]")).toHaveText("Materials");
+  await page
+    .locator("#categoryId")
+    .selectOption({ label: "Snacks and sweets" });
+  await expect(page.locator("label[for=composition]")).toHaveText(
+    "Ingredients",
   );
 });
 

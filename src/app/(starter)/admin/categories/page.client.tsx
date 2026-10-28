@@ -81,6 +81,7 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
             <TableHead>Name</TableHead>
             <TableHead>Slug</TableHead>
             <TableHead>Order</TableHead>
+            <TableHead>Product details</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -90,7 +91,7 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
             <CategoryRow
               busy={busy}
               category={category}
-              key={`${category.id}:${category.name}:${category.sortOrder}`}
+              key={`${category.id}:${category.name}:${category.sortOrder}:${category.compositionLabel}`}
               onSave={(patch) =>
                 run(() =>
                   sendJson(
@@ -144,6 +145,25 @@ function CategoryRow({
           }}
           value={sortOrder}
         />
+      </TableCell>
+      <TableCell>
+        <select
+          aria-label={`Ingredients or materials for ${category.name}`}
+          className={`
+            h-9 rounded-md border border-input bg-background px-2 text-sm
+          `}
+          disabled={busy}
+          onChange={(event) =>
+            void onSave({
+              compositionLabel: event.target
+                .value as Category["compositionLabel"],
+            })
+          }
+          value={category.compositionLabel}
+        >
+          <option value="INGREDIENTS">Ingredients</option>
+          <option value="MATERIALS">Materials</option>
+        </select>
       </TableCell>
       <TableCell>
         <Badge variant={category.isActive ? "default" : "outline"}>

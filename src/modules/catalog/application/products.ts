@@ -39,6 +39,7 @@ import type {
 import {
   type CompositionLabel,
   LOW_STOCK_THRESHOLD,
+  type MadeHow,
 } from "../domain/constants";
 import { PRODUCT_STATUSES, type ProductStatus } from "../domain/product-status";
 import { type PublishBlocker, publishBlockers } from "../domain/publishability";
@@ -78,6 +79,7 @@ export interface ProductSummary {
   coverImageUrl: null | string;
   id: string;
   lowStock: boolean;
+  madeHow: MadeHow | null;
   name: string;
   priceFromPaise: null | number;
   slug: string;
@@ -282,6 +284,7 @@ export async function summaries(
         limit 1
       )`,
       id: productsTable.id,
+      madeHow: productsTable.madeHow,
       merchantId: productsTable.merchantId,
       name: productsTable.name,
       priceFrom: sql<

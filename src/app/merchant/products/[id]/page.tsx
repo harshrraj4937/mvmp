@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import type { CompositionLabel } from "~/modules/catalog/domain/constants";
+import type { PublishBlocker } from "~/modules/catalog/domain/publishability";
+
 import { db } from "~/db";
 import {
   getProduct,
@@ -16,16 +19,15 @@ import { Panel } from "~/ui/gillu/desk/panel";
 import { ProductStatusBadge } from "~/ui/gillu/desk/product-card";
 import { ProductDetailsForm } from "~/ui/gillu/desk/product-form.client";
 import { StatusActions } from "~/ui/gillu/desk/status-actions.client";
+import { COMPOSITION_TEXT } from "~/ui/gillu/desk/story-text";
 import { VariantsTable } from "~/ui/gillu/desk/variants-table.client";
 
 const BLOCKER_TEXT = {
   category: "Choose an active category",
-  composition: "List its ingredients",
   image: "Add at least one image",
   made_by: "Say who made it",
   made_how: "Choose handmade or homemade",
   origin: "Say where it comes from (state and place)",
-  shop_story: "Finish your shop's story",
   variant: "Add a variant with a price",
 } as const;
 
@@ -44,13 +46,15 @@ export default async function EditProductPage({
     throw error;
   }
   const categories = await listActiveCategories(db);
-  const options = categories.map(({ id: value, name }) => ({
+  const options = categories.map(({ compositionLabel, id: value, name }) => ({
+    compositionLabel,
     id: value,
     name,
   }));
   // A hidden category stays selectable for the product that already uses it.
   if (!options.some((option) => option.id === product.categoryId)) {
     options.push({
+      compositionLabel: product.compositionLabel,
       id: product.categoryId,
       name: `${product.categoryName} (hidden by Gillu)`,
     });
@@ -59,6 +63,9 @@ export default async function EditProductPage({
   const showBlockers =
     (product.status === "DRAFT" || product.status === "UNPUBLISHED") &&
     product.publishBlockers.length > 0;
+  // Published before stories were required: still live, but incomplete.
+  const liveButMissing =
+    product.status === "PUBLISHED" && product.publishBlockers.length > 0;
 
   return (
     <>
@@ -91,7 +98,25 @@ export default async function EditProductPage({
             <strong>Before you can publish:</strong>
             <ul aria-label="Before you can publish:" className="blockers">
               {product.publishBlockers.map((blocker) => (
-                <li key={blocker}>{BLOCKER_TEXT[blocker]}</li>
+                <BlockerItem
+                  blocker={blocker}
+                  compositionLabel={product.compositionLabel}
+                  key={blocker}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+        {liveButMissing && (
+          <div className="notice">
+            <strong>Customers see this product, but it is missing:</strong>
+            <ul aria-label="Missing from this product:" className="blockers">
+              {product.publishBlockers.map((blocker) => (
+                <BlockerItem
+                  blocker={blocker}
+                  compositionLabel={product.compositionLabel}
+                  key={blocker}
+                />
               ))}
             </ul>
           </div>
@@ -106,8 +131,13 @@ export default async function EditProductPage({
             categories={options}
             initial={{
               categoryId: product.categoryId,
+              composition: product.composition ?? "",
               description: product.description ?? "",
+              madeBy: product.madeBy ?? "",
+              madeHow: product.madeHow ?? "",
               name: product.name,
+              originPlace: product.originPlace ?? "",
+              originState: product.originState ?? "",
             }}
             key={product.id}
             productId={product.id}
@@ -131,4 +161,25 @@ export default async function EditProductPage({
       </div>
     </>
   );
+}
+
+/** What a merchant must do for one blocker; story blockers link onward. */
+function BlockerItem({
+  blocker,
+  compositionLabel,
+}: {
+  blocker: PublishBlocker;
+  compositionLabel: CompositionLabel;
+}) {
+  if (blocker === "shop_story") {
+    return (
+      <li>
+        <Link href="/merchant/profile#story">Finish your shop's story</Link>
+      </li>
+    );
+  }
+  if (blocker === "composition") {
+    return <li>List its {COMPOSITION_TEXT[compositionLabel].toLowerCase()}</li>;
+  }
+  return <li>{BLOCKER_TEXT[blocker]}</li>;
 }

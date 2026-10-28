@@ -9,7 +9,7 @@ import { Panel } from "~/ui/gillu/desk/panel";
 import { NewProductForm } from "~/ui/gillu/desk/product-form.client";
 
 export default async function NewProductPage() {
-  await requireApprovedMerchant("/merchant/products/new");
+  const merchant = await requireApprovedMerchant("/merchant/products/new");
   const categories = await listActiveCategories(db);
   return (
     <>
@@ -25,7 +25,12 @@ export default async function NewProductPage() {
       />
       <Panel>
         <NewProductForm
-          categories={categories.map(({ id, name }) => ({ id, name }))}
+          categories={categories.map(({ compositionLabel, id, name }) => ({
+            compositionLabel,
+            id,
+            name,
+          }))}
+          storeName={merchant.storeName}
         />
       </Panel>
     </>
