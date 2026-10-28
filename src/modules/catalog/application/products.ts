@@ -2,6 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   exists,
@@ -19,17 +20,26 @@ import {
   categoriesTable,
   inventoryTable,
   merchantsTable,
+  merchantStoryImagesTable,
   productImagesTable,
   productsTable,
   productVariantsTable,
 } from "~/db/schema";
 import { suggestSlug } from "~/lib/slug";
+import { isShopStoryComplete } from "~/modules/merchants/domain/story";
 import { uniqueViolation } from "~/platform/db-errors";
 import { ConflictError } from "~/platform/errors";
 
-import type { ProductCreate, ProductPatch } from "../presentation/schemas";
+import type {
+  ProductCreate,
+  ProductPatch,
+  ProductStory,
+} from "../presentation/schemas";
 
-import { LOW_STOCK_THRESHOLD } from "../domain/constants";
+import {
+  type CompositionLabel,
+  LOW_STOCK_THRESHOLD,
+} from "../domain/constants";
 import { PRODUCT_STATUSES, type ProductStatus } from "../domain/product-status";
 import { type PublishBlocker, publishBlockers } from "../domain/publishability";
 import {
@@ -44,8 +54,9 @@ import {
   type VariantView,
 } from "./shared";
 
-export interface ProductDetail extends ProductSummary {
+export interface ProductDetail extends ProductStory, ProductSummary {
   categoryId: string;
+  compositionLabel: CompositionLabel;
   description: null | string;
   images: ProductImageView[];
   publishBlockers: PublishBlocker[];
@@ -124,10 +135,15 @@ export async function createProduct(
     await db.transaction(async (tx) => {
       await tx.insert(productsTable).values({
         categoryId: input.categoryId,
+        composition: input.composition ?? null,
         description: input.description ?? null,
         id: productId,
+        madeBy: input.madeBy ?? null,
+        madeHow: input.madeHow ?? null,
         merchantId: ctx.merchantId,
         name: input.name,
+        originPlace: input.originPlace ?? null,
+        originState: input.originState ?? null,
         slug: await freeSlug(tx, ctx, input.name),
       });
       await insertVariant(tx, ctx, productId, input.variant, {
@@ -154,12 +170,18 @@ export async function getProduct(
   if (!summary) {
     throw productNotFound();
   }
-  const [[extra], variants, images] = await Promise.all([
+  const [[extra], variants, images, shopStoryComplete] = await Promise.all([
     db
       .select({
         categoryActive: categoriesTable.isActive,
         categoryId: productsTable.categoryId,
+        composition: productsTable.composition,
+        compositionLabel: categoriesTable.compositionLabel,
         description: productsTable.description,
+        madeBy: productsTable.madeBy,
+        madeHow: productsTable.madeHow,
+        originPlace: productsTable.originPlace,
+        originState: productsTable.originState,
       })
       .from(productsTable)
       .innerJoin(
@@ -169,21 +191,37 @@ export async function getProduct(
       .where(eq(productsTable.id, productId)),
     listVariants(db, productId),
     listImages(db, productId),
+    shopStoryIsComplete(db, summary.merchantId),
   ]);
   if (!extra) {
     throw productNotFound();
   }
   const active = variants.filter((variant) => variant.isActive);
+  const story: ProductStory = {
+    composition: extra.composition,
+    madeBy: extra.madeBy,
+    madeHow: extra.madeHow,
+    originPlace: extra.originPlace,
+    // Only ever written through the state-checked schema.
+    originState: extra.originState as ProductStory["originState"],
+  };
   return {
     ...summary,
+    ...story,
     categoryId: extra.categoryId,
+    compositionLabel: extra.compositionLabel,
     description: extra.description,
     images,
     publishBlockers: publishBlockers({
       activePricedVariants: active.filter((variant) => variant.pricePaise > 0)
         .length,
       categoryActive: extra.categoryActive,
+      composition: story.composition !== null,
       images: images.length,
+      madeBy: story.madeBy !== null,
+      madeHow: story.madeHow !== null,
+      origin: story.originState !== null && story.originPlace !== null,
+      shopStoryComplete,
     }),
     variants,
   };
@@ -296,6 +334,12 @@ export async function updateProduct(
   if (product.status === "ARCHIVED") {
     throw archivedProduct();
   }
+  if (product.status === "PUBLISHED" && clearsStory(product, patch)) {
+    throw new ConflictError(
+      "story_required",
+      "A published product needs its story. Unpublish it first to clear this.",
+    );
+  }
   if (
     patch.slug !== undefined &&
     patch.slug !== product.slug &&
@@ -340,6 +384,24 @@ export async function updateProduct(
   return getProduct(db, ctx, productId);
 }
 
+const STORY_FIELDS = [
+  "composition",
+  "madeBy",
+  "madeHow",
+  "originPlace",
+  "originState",
+] as const satisfies readonly (keyof ProductStory)[];
+
+/** True when `patch` blanks a story field that currently has a value. */
+function clearsStory(
+  product: Record<(typeof STORY_FIELDS)[number], unknown>,
+  patch: ProductPatch,
+): boolean {
+  return STORY_FIELDS.some(
+    (field) => patch[field] === null && product[field] !== null,
+  );
+}
+
 /** A slug from the name, suffixed when the shop already uses it. */
 async function freeSlug(
   db: Executor,
@@ -382,4 +444,27 @@ async function listImages(
 
 function ownedBy(ctx: MerchantContext): SQL {
   return eq(productsTable.merchantId, ctx.merchantId);
+}
+
+async function shopStoryIsComplete(
+  db: Executor,
+  merchantId: string,
+): Promise<boolean> {
+  const [[shop], [photos]] = await Promise.all([
+    db
+      .select({
+        homePlace: merchantsTable.homePlace,
+        homeState: merchantsTable.homeState,
+        story: merchantsTable.story,
+      })
+      .from(merchantsTable)
+      .where(eq(merchantsTable.id, merchantId)),
+    db
+      .select({ images: count() })
+      .from(merchantStoryImagesTable)
+      .where(eq(merchantStoryImagesTable.merchantId, merchantId)),
+  ]);
+  return shop
+    ? isShopStoryComplete({ ...shop, images: photos?.images ?? 0 })
+    : false;
 }

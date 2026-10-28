@@ -1,8 +1,14 @@
 import { createId } from "@paralleldrive/cuid2";
+import { eq } from "drizzle-orm";
 
 import type { Database } from "~/db";
 
-import { categoriesTable, productImagesTable } from "~/db/schema";
+import {
+  categoriesTable,
+  merchantsTable,
+  merchantStoryImagesTable,
+  productImagesTable,
+} from "~/db/schema";
 import { productCreateSchema } from "~/modules/catalog/presentation/schemas";
 import { submitMerchant } from "~/modules/merchants/application/profile";
 import { approveMerchant } from "~/modules/merchants/application/review";
@@ -27,12 +33,40 @@ export async function addImageRow(db: Database, productId: string) {
   return id;
 }
 
-/** Parsed product input, as a route handler would pass it to the service. */
+/** Gives a shop a complete story: text, place, state and one photo row. */
+export async function completeStory(db: Database, merchantId: string) {
+  await db
+    .update(merchantsTable)
+    .set({
+      homePlace: "Malvan",
+      homeState: "maharashtra",
+      story: "We roast cashews in our courtyard kitchen. ".repeat(5).trim(),
+    })
+    .where(eq(merchantsTable.id, merchantId));
+  const id = createId();
+  await db.insert(merchantStoryImagesTable).values({
+    alt: "Makers at work",
+    bytes: 38,
+    contentType: "image/webp",
+    height: 2,
+    id,
+    merchantId,
+    storageKey: `test/${id}.webp`,
+    url: `/api/v1/images/test/${id}.webp`,
+    width: 3,
+  });
+}
+
+/**
+ * Parsed product input, as a route handler would pass it to the service.
+ * Includes a complete story unless overridden.
+ */
 export function productInput(
   overrides: Partial<Record<string, unknown>> = {},
   variant: Partial<Record<string, unknown>> = {},
 ) {
   return productCreateSchema.parse({
+    ...storyInput(),
     categoryId: "cat_handmade_gifts",
     initialStock: 10,
     name: `Clay diya set ${createId().slice(0, 6)}`,
@@ -49,12 +83,19 @@ export function productInput(
   });
 }
 
-/** A shop that went through submit and approval, ready to sell. */
+/**
+ * A shop that went through submit and approval, ready to sell; with a
+ * complete story unless `story: false`.
+ */
 export async function seedApprovedMerchant(
   db: Database,
   overrides: Parameters<typeof seedMerchant>[1] = {},
+  { story = true }: { story?: boolean } = {},
 ) {
   const merchant = await seedMerchant(db, overrides);
+  if (story) {
+    await completeStory(db, merchant.merchantId);
+  }
   await submitMerchant(db, merchant);
   await approveMerchant(
     db,
@@ -74,4 +115,15 @@ export async function seedCategory(
     .insert(categoriesTable)
     .values({ id, name, slug: id, sortOrder: 1000 });
   return id;
+}
+
+/** A filled-in product story (spec §4.1). */
+export function storyInput() {
+  return {
+    composition: "Cashews, jaggery, cardamom",
+    madeBy: "Lakshmi Sawant and her daughters",
+    madeHow: "HOMEMADE",
+    originPlace: "Malvan",
+    originState: "maharashtra",
+  };
 }

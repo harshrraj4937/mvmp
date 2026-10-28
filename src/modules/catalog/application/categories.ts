@@ -9,9 +9,11 @@ import { suggestSlug } from "~/lib/slug";
 import { uniqueViolation } from "~/platform/db-errors";
 import { ConflictError, NotFoundError } from "~/platform/errors";
 
+import type { CompositionLabel } from "../domain/constants";
 import type { CategoryCreate, CategoryPatch } from "../presentation/schemas";
 
 export interface Category {
+  compositionLabel: CompositionLabel;
   id: string;
   isActive: boolean;
   name: string;
@@ -20,6 +22,7 @@ export interface Category {
 }
 
 const columns = {
+  compositionLabel: categoriesTable.compositionLabel,
   id: categoriesTable.id,
   isActive: categoriesTable.isActive,
   name: categoriesTable.name,
@@ -47,6 +50,7 @@ export async function createCategory(
     const [row] = await db
       .insert(categoriesTable)
       .values({
+        compositionLabel: input.compositionLabel,
         id: createId(),
         name: input.name,
         slug,

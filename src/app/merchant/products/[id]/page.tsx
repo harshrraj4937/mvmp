@@ -20,7 +20,12 @@ import { VariantsTable } from "~/ui/gillu/desk/variants-table.client";
 
 const BLOCKER_TEXT = {
   category: "Choose an active category",
+  composition: "List its ingredients",
   image: "Add at least one image",
+  made_by: "Say who made it",
+  made_how: "Choose handmade or homemade",
+  origin: "Say where it comes from (state and place)",
+  shop_story: "Finish your shop's story",
   variant: "Add a variant with a price",
 } as const;
 
