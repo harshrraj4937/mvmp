@@ -43,6 +43,13 @@
       "when": 1793178349535,
       "tag": "0005_bent_gamma_corps",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793190187942,
+      "tag": "0006_empty_nemesis",
+      "breakpoints": true
     }
   ]
 }

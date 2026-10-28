@@ -238,3 +238,98 @@ describe("Phase 4 (migration 0005)", () => {
     });
   });
 });
+
+describe("Phase 5 (migration 0006)", () => {
+  const { close, db } = connectTestDb();
+  const sql = postgres(inject("databaseUrl"), { max: 1 });
+
+  afterAll(async () => {
+    await close();
+    await sql.end();
+  });
+
+  const address = (userId: string, isDefault: boolean) => sql`
+    insert into customer_addresses (id, user_id, full_name, phone, line1, city, state, postal_code, is_default)
+    values (${createId()}, ${userId}, 'Asha Naik', '+919876543210', '12 Fontainhas Road', 'Panaji', 'goa', '403001', ${isDefault})
+  `;
+
+  const order = (
+    userId: string,
+    checkoutKey: string,
+    totalPaise = 39900,
+  ) => sql`
+    insert into orders (id, number, user_id, status, payment_method, payment_status, checkout_key, items_total_paise, total_paise)
+    values (${createId()}, ${`GIL-T${createId()}`}, ${userId}, 'CONFIRMED', 'COD', 'UNPAID', ${checkoutKey}, ${totalPaise}, ${totalPaise})
+    returning id
+  `;
+
+  test("adds the order tables", async () => {
+    const tables = await listPublicTables(inject("databaseUrl"));
+    expect(tables).toEqual(
+      expect.arrayContaining([
+        "customer_addresses",
+        "orders",
+        "merchant_orders",
+        "order_items",
+        "order_address_snapshots",
+        "order_status_history",
+        "inventory_reservations",
+      ]),
+    );
+  });
+
+  test("order numbers start at 1001", async () => {
+    const [row] = await sql<
+      { n: string }[]
+    >`select nextval('order_number_seq') as n`;
+    expect(Number(row?.n)).toBeGreaterThanOrEqual(1001);
+  });
+
+  test("a shopper has one default address", async () => {
+    const userId = await seedUser(db);
+    await address(userId, true);
+    await address(userId, false);
+    await expect(address(userId, true)).rejects.toMatchObject({
+      constraint_name: "customer_addresses_one_default",
+    });
+  });
+
+  test("one order per checkout key per shopper, totals never negative", async () => {
+    const userId = await seedUser(db);
+    const key = createId();
+    await order(userId, key);
+    await expect(order(userId, key)).rejects.toMatchObject({
+      constraint_name: "orders_user_checkout_key_unique",
+    });
+    await order(await seedUser(db), key);
+    await expect(order(userId, createId(), -1)).rejects.toMatchObject({
+      code: "23514",
+    });
+  });
+
+  test("order item quantity is positive", async () => {
+    const userId = await seedUser(db);
+    const merchant = await seedMerchant(db);
+    const [created] = await order(userId, createId());
+    const partId = createId();
+    await sql`
+      insert into merchant_orders (id, number, order_id, merchant_id, items_total_paise, total_paise)
+      values (${partId}, ${`GIL-T${partId}-A`}, ${created?.id ?? ""}, ${merchant.merchantId}, 39900, 39900)
+    `;
+    await expect(
+      sql`
+        insert into order_items (id, merchant_order_id, product_name, product_slug, sku, unit_price_paise, quantity, line_total_paise)
+        values (${createId()}, ${partId}, 'Diya set', 'diya-set', 'SKU-1', 39900, 0, 0)
+      `,
+    ).rejects.toMatchObject({ code: "23514" });
+  });
+
+  test("stock movements can record order reasons", async () => {
+    const rows = await sql<{ value: string }[]>`
+      select unnest(enum_range(null::inventory_movement_reason))::text as value
+    `;
+    expect(rows.map((row) => row.value)).toEqual(
+      expect.arrayContaining(["ORDER_RESERVED", "ORDER_RELEASED"]),
+    );
+  });
+});
