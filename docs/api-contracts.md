@@ -185,7 +185,7 @@ snapshot (`productName`, `variantLabel`, `sku`, `unitPricePaise`,
 | `POST /orders` | `{ addressId, paymentMethod, expectedTotalPaise, checkoutKey }` (`checkoutKey` 16–64 of `[A-Za-z0-9_-]`) | 201 order view; 200 with the same order when the key was used before | 400, 404 `Address not found.`, 409 `payment_method_unavailable` (PREPAID until Phase 6), 409 `cart_empty`, 409 `cart_needs_attention` (an item is no longer on sale or its price changed), 409 `price_changed` (`details.totalPaise`), 409 `insufficient_stock` ("Only N left of <name>." / "<name> is sold out.", `details.available`, `details.variantId`) |
 | `GET /orders` | — | 200 summaries `{ number, status, partStatuses, totalPaise, createdAt }`, newest first | — |
 | `GET /orders/{number}` | — | 200 order view | 404 `Order not found.` (another shopper's order too) |
-| `POST /orders/{number}/cancel` | `{ merchantOrder?, reason? }` — `merchantOrder` (`GIL-n-A`) cancels one parcel, omitted cancels every open parcel | 200 order view; held stock goes back on sale | 400, 404 `Order not found.` / `Parcel not found.`, 409 `invalid_transition` (handed to the courier, delivered or already cancelled) |
+| `POST /orders/{number}/cancel` | `{ merchantOrder?, reason? }` — `merchantOrder` (`GIL-n-A`) cancels one parcel, omitted cancels every open parcel | 200 order view; held stock goes back on sale (a parcel already with the courier has none held) | 400, 404 `Order not found.` / `Parcel not found.`, 409 `invalid_transition` (delivered or already cancelled) |
 
 `POST /orders` merges a guest cart first, then places the order in one
 transaction and removes the ordered lines from the cart.

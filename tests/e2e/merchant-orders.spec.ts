@@ -29,6 +29,8 @@ async function stockOf(
 }
 
 test("makers work their own part of an order", async ({ browser, page }) => {
+  // Three accounts, two approved shops and a full order walk.
+  test.slow();
   const { itemA, itemB, makerB, nameA, nameB, shopper, storeB } =
     await twoMakerCart(browser, page);
   const number = await placeOrderViaApi(shopper);

@@ -171,13 +171,17 @@ export async function updateAddress(
     if (patch.isDefault === true) {
       await clearDefault(tx, userId, id);
     }
-    await tx
-      .update(customerAddressesTable)
-      .set({
-        ...changedFields(patch),
-        ...(patch.isDefault === true ? { isDefault: true } : {}),
-      })
-      .where(eq(customerAddressesTable.id, id));
+    const set = {
+      ...changedFields(patch),
+      ...(patch.isDefault === true ? { isDefault: true } : {}),
+    };
+    // `{ isDefault: false }` alone leaves nothing to write.
+    if (Object.keys(set).length > 0) {
+      await tx
+        .update(customerAddressesTable)
+        .set(set)
+        .where(eq(customerAddressesTable.id, id));
+    }
     return getAddress(tx, userId, id);
   });
 }

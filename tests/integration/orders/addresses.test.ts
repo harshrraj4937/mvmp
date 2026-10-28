@@ -96,6 +96,15 @@ describe("shopper addresses", () => {
     expect((await getAddress(db, userId, created.id)).isDefault).toBe(false);
   });
 
+  test("a patch of only isDefault false changes nothing", async () => {
+    const userId = await seedUser(db);
+    const created = await createAddress(db, userId, input());
+    const updated = await updateAddress(db, userId, created.id, {
+      isDefault: false,
+    });
+    expect(updated).toEqual(created);
+  });
+
   test("another shopper's address is not found", async () => {
     const owner = await seedUser(db);
     const stranger = await seedUser(db);

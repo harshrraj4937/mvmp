@@ -531,7 +531,8 @@ never set on its own. A maker moves its part NEW → ACKNOWLEDGED → PACKING �
 READY_FOR_PICKUP one step at a time; HANDED_TO_COURIER and FULFILLED are
 system steps for the shipping integration (Phase 7). The shopper may cancel
 one parcel or the whole order, and a maker its own part, any time before
-pickup; every change writes `order_status_history`. Delivery is free for
+delivery (once a parcel is with the courier its stock has already left);
+every change writes `order_status_history`. Delivery is free for
 the shopper (`delivery_paise` 0); the courier cost is the maker's
 (`courier_estimate_paise`/`courier_charge_paise` reserved for Phase 7).
 

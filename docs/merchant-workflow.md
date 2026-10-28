@@ -167,6 +167,7 @@ stateDiagram-v2
     ACKNOWLEDGED --> CANCELED: shopper or maker
     PACKING --> CANCELED: shopper or maker
     READY_FOR_PICKUP --> CANCELED: shopper or maker
+    HANDED_TO_COURIER --> CANCELED: shopper or maker (stock already left)
 ```
 
 - The maker moves one step at a time; a skipped or repeated step is
@@ -176,7 +177,8 @@ stateDiagram-v2
   "Can't fulfil this order" or "Other" (with a note). "Out of stock" and
   "Damaged" write the held pieces off (they are gone); every other cancel,
   and every shopper cancel, puts them back on sale with an `ORDER_RELEASED`
-  movement.
+  movement. A parcel can be cancelled until it is delivered; once it is with
+  the courier its stock has already left, so nothing returns.
 - Held stock shows on the product page as "N held for orders"; merchants
   cannot choose the order reasons in a stock adjustment.
 - Every step and cancel is one transaction that locks the order and then the

@@ -226,7 +226,7 @@ Spec: `docs/superpowers/specs/2026-10-28-gillu-phase-5-orders-design.md`; plan: 
 - [x] Checkout validation — signed-in shopper, address, cash on delivery; the server re-checks every line, the total (`price_changed`) and stock (`insufficient_stock`) inside one transaction; "Pay online" shows "Coming soon" (Cashfree, Phase 6)
 - [x] Multi-merchant suborders — one order, one part per shop (`GIL-1001-A`, `-B`), each with its own status and COD amount (ADR-035)
 - [x] Inventory reservations — held at placement, released on cancel, written off when the maker cancels "Out of stock"/"Damaged" (ADR-036); Scenario H (last piece) integration test
-- [x] Order lifecycle — maker steps NEW → ACKNOWLEDGED → PACKING → READY_FOR_PICKUP; shopper and maker cancel before pickup with reasons; status history; order status derived from parts
+- [x] Order lifecycle — maker steps NEW → ACKNOWLEDGED → PACKING → READY_FOR_PICKUP; shopper and maker cancel any time before delivery, with reasons; status history; order status derived from parts
 - [x] Idempotency — checkout key per checkout page, unique per shopper (ADR-037)
 - [x] Merchant order notifications — desk nav "Orders" badge with the NEW count and dashboard "Your orders" metrics (WhatsApp alerts deferred, as agreed)
 - [x] Shopper pages — `/orders`, `/orders/[number]` (parcels, cancel), header "My orders" / "Sign out"
