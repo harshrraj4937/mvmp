@@ -387,6 +387,7 @@ FEATURES IMPLEMENTED:
 FILES CHANGED: `git diff --shortstat gillu/phase-3..gillu/phase-4` — 121 files, +11,638 / −1,585 (15 commits before the docs commit); main areas: `src/app/(site)/**`, `src/app/api/v1/{cart,products,shops,merchant/story}/**`, `src/modules/{cart,catalog,merchants}/**`, `src/ui/gillu/{site,store,desk}/**`, `src/css/gillu-*.css`, `drizzle/0005_*`, `tests/**`, `docs/*`, `diagrams/*`
 TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke (project `gillu-smoke`)
 TEST RESULTS: unit 237/237, integration 146/146, E2E 74/74; typecheck, lint, knip pass; Compose smoke pass (6 migrations, new tables, storefront and cart endpoints, `down -v` for `gillu-smoke` only)
+FINAL REVIEW: self-review by the author (no reviewer subagent dispatched). Checked: raw SQL (check constraints only), HTML injection (none), cart cookie flags and JSON-only writes, story routes scoped to the caller's shop (`authorizeMerchant`), public shop payload (story, photos, products only). No Critical or Important findings.
 KNOWN ISSUES:
 - Checkout cannot place an order; Phase 5 adds orders and reservations (`inventory.reserved` is untouched)
 - A cart is per browser until the shopper signs in; no cart sharing across devices
