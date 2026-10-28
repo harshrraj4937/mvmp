@@ -249,6 +249,14 @@ Run 2026-10-28 on `gillu/phase-5`:
 
 Final review: see the Phase 5 report below.
 
+Final review fix pass, 2026-10-28:
+
+| Check | Result |
+|---|---|
+| Finding: `PATCH /api/v1/account/addresses/{id}` with only `{ "isDefault": false }` answered 500 ("No values to set") | FIXED — nothing to write returns the address unchanged. Integration `a patch of only isDefault false changes nothing` (RED→GREEN) |
+| Finding: docs said a parcel could be cancelled only before pickup; the code and the agreed rule allow it until delivery | FIXED — API contracts, merchant workflow, ADR-035 |
+| Gate after the fixes | typecheck, lint, knip PASS; unit 249/249; integration 193/193; E2E 84 run under machine load (load average ~11): 3 then 1 tests hit the 30 s budget and each passed on rerun; the merchant-orders walk now uses `test.slow()` |
+
 ### Phase 6 — Cashfree
 Status: NOT_STARTED
 
@@ -441,7 +449,7 @@ FEATURES IMPLEMENTED:
 FILES CHANGED: `git diff --shortstat gillu/phase-4..gillu/phase-5` before the docs commit — 81 files, +10,214 / −47 (12 commits); main areas: `src/modules/orders/**`, `src/modules/catalog/application/reservations.ts`, `src/modules/cart/application/checkout-cart.ts`, `src/app/api/v1/{orders,account,merchant/orders}/**`, `src/app/(site)/{checkout,orders,account}/**`, `src/app/merchant/orders/**`, `src/ui/gillu/{store,desk}/**`, `drizzle/0006_*`, `tests/**`, `docs/*`, `diagrams/*`
 TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke (project `gillu-smoke`)
 TEST RESULTS: unit 249/249, integration 192/192, E2E 84/84; typecheck, lint, knip pass; Compose smoke pass (7 migrations, new tables, order endpoints 401 signed out, `down -v` for `gillu-smoke` only)
-FINAL REVIEW: self-review by the author (no reviewer subagent dispatched); findings in the Phase 5 ledger and the hand-off message.
+FINAL REVIEW: self-review by the author (no reviewer subagent dispatched). One Important bug fixed (address patch 500) and one docs error fixed; three minors deferred (merchant 403 wording names products; a suspended shop cannot open its open orders; placement does not lock product status).
 KNOWN ISSUES:
 - Cash on delivery only; "Pay online" waits for Cashfree (Phase 6)
 - Parcels stop at "Packed — waiting for pickup"; pickup, delivery and stock consumption arrive with Shiprocket (Phase 7)
