@@ -1,8 +1,9 @@
 # Merchant Workflow
 
-Status: Phase 4 — onboarding, review, profile, pickup locations, the product
-catalog and the shop story are implemented and verified (2026-10-28, branch
-`gillu/phase-4`; catalog verified 2026-10-27 on `gillu/phase-3`).
+Status: Phase 5 — onboarding, review, profile, pickup locations, the product
+catalog, the shop story and order handling are implemented and verified
+(2026-10-28, branch `gillu/phase-5`; storefront on `gillu/phase-4`, catalog
+verified 2026-10-27 on `gillu/phase-3`).
 
 Governed by: [design](superpowers/specs/2026-10-27-gillu-marketplace-design.md), requirements §8, §14, §19.
 Decisions: ADR-022 to ADR-025 in [`diagrams/decisions.md`](../diagrams/decisions.md).
@@ -54,7 +55,9 @@ stateDiagram-v2
 | `/merchant/onboarding` | `requireSession` | No shop: the onboarding form ("Create shop"). DRAFT: "Your shop is a draft" + "Submit for review". SUBMITTED: "Your shop is under review". REJECTED: "Your shop needs changes" + the admin's reason. SUSPENDED: "Your shop is suspended". APPROVED: redirect to the dashboard |
 | `/merchant/profile` | `requireMerchant` | Profile form; locked fields disabled with "Locked after approval — contact Gillu to change"; "Unverified" badge until compliance is confirmed |
 | `/merchant/settings/shipping` | `requireMerchant` | Pickup locations, "Make primary", add a location |
-| `/merchant/dashboard` | `requireApprovedMerchant` | Store name, "Approved", shop URL `/shops/<slug>`, live product count, catalog metrics (published, drafts, out of stock, low stock), primary pickup location. No sales numbers yet (no mock data) |
+| `/merchant/dashboard` | `requireApprovedMerchant` | Store name, "Approved", shop URL `/shops/<slug>`, live product count, "Your orders" (new orders, orders to pack), catalog metrics (published, drafts, out of stock, low stock), primary pickup location. No sales numbers yet (no mock data) |
+| `/merchant/orders` | `requireApprovedMerchant` | The shop's parts, newest first, 25 per page, with tabs New / Preparing / Packing / Packed / Cancelled / All |
+| `/merchant/orders/[id]` | `requireApprovedMerchant` | Items with SKU, total, "Cash on delivery: collect ₹X", delivery name, phone and address, history; the next-step button and "Cancel order". Another shop's part shows the not-found page |
 | `/merchant/products` | `requireApprovedMerchant` | Product cards with search (`?q`) and status filter (`?status`) |
 | `/merchant/products/new` | `requireApprovedMerchant` | New product form ("Save draft") |
 | `/merchant/products/[id]` | `requireApprovedMerchant` | Details, photos (upload, describe, reorder, remove), variants (add, edit, switch off/on) and stock (adjust, recent changes), publish blockers, admin hold notice, Publish / Unpublish / Archive |
@@ -143,6 +146,41 @@ be complete. Staff can see and edit the story; only the owner changes the
 shop's details. The desk's **Your story** panel on `/merchant/profile` holds
 the text, place, state and photos. Photos can be reordered; the first one is
 the cover on the shop page.
+
+## Orders (ADR-035, ADR-036)
+
+A shopper's order is split into one part per shop (`GIL-1001-A`, `-B`, …).
+Each shop sees only its own part, with the shopper's delivery address and
+phone. The desk nav shows "Orders" with the count of NEW parts; the
+dashboard shows new orders and orders to pack. The desk sidebar has
+"Sign out" for every shop member.
+
+```mermaid
+stateDiagram-v2
+    [*] --> NEW: shopper places the order (stock held)
+    NEW --> ACKNOWLEDGED: "Start preparing"
+    ACKNOWLEDGED --> PACKING: "Start packing"
+    PACKING --> READY_FOR_PICKUP: "Mark packed"
+    READY_FOR_PICKUP --> HANDED_TO_COURIER: courier pickup (Phase 7, system)
+    HANDED_TO_COURIER --> FULFILLED: delivered (Phase 7, system)
+    NEW --> CANCELED: shopper or maker
+    ACKNOWLEDGED --> CANCELED: shopper or maker
+    PACKING --> CANCELED: shopper or maker
+    READY_FOR_PICKUP --> CANCELED: shopper or maker
+```
+
+- The maker moves one step at a time; a skipped or repeated step is
+  `409 invalid_transition`. Pickup and delivery are set by the shipping
+  integration only.
+- Cancelling needs a reason the shopper sees: "Out of stock", "Damaged",
+  "Can't fulfil this order" or "Other" (with a note). "Out of stock" and
+  "Damaged" write the held pieces off (they are gone); every other cancel,
+  and every shopper cancel, puts them back on sale with an `ORDER_RELEASED`
+  movement.
+- Held stock shows on the product page as "N held for orders"; merchants
+  cannot choose the order reasons in a stock adjustment.
+- Every step and cancel is one transaction that locks the order and then the
+  part, so a shopper cancel and a maker step never both apply.
 
 ## Locked fields (ADR-024)
 

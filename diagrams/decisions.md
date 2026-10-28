@@ -513,3 +513,75 @@ kept.
 Consequence: returning visitors reach the products quickly, and nothing about
 a shopper is stored on the server. The cost is that the list is per browser,
 and clearing cookies shows the full story again.
+
+## ADR-035: One order per placement, one part per maker, derived order status
+
+Status: Accepted
+Date: 2026-10-28
+
+Decision: Placing an order creates one `orders` row (number `GIL-<n>` from
+the sequence `order_number_seq`, starting at 1001) and one `merchant_orders`
+part per shop in the cart (`GIL-<n>-A`, `-B`, … in the order the shop's first
+line was added). Each part has its own fulfilment status, totals and cash-on-
+delivery amount, and ships separately. Items keep a snapshot of the product
+as sold (name, size, SKU, price, MRP, cover) and the order keeps a snapshot
+of the delivery address. The order's status is derived from its parts
+(`deriveOrderStatus`) inside the same transaction as every part change; it is
+never set on its own. A maker moves its part NEW → ACKNOWLEDGED → PACKING →
+READY_FOR_PICKUP one step at a time; HANDED_TO_COURIER and FULFILLED are
+system steps for the shipping integration (Phase 7). The shopper may cancel
+one parcel or the whole order, and a maker its own part, any time before
+pickup; every change writes `order_status_history`. Delivery is free for
+the shopper (`delivery_paise` 0); the courier cost is the maker's
+(`courier_estimate_paise`/`courier_charge_paise` reserved for Phase 7).
+
+Consequence: each maker sees and works only its own parcel, and a shopper
+sees one order with a parcel per shop. A change of a product, price or saved
+address never rewrites an order. The cost is two status levels to keep in
+step, which is why only `applyTransition` writes either, locking the order
+row before the part row.
+
+## ADR-036: Stock is held at order time and released or written off
+
+Status: Accepted
+Date: 2026-10-28
+
+Decision: Placing an order holds stock for every item in the same
+transaction: `UPDATE inventory SET available = available - q, reserved =
+reserved + q WHERE variant_id = v AND available >= q`, variants in ascending
+id order so concurrent orders never deadlock, with an `ORDER_RESERVED`
+movement and an `inventory_reservations` row (HELD). A shortfall fails the
+whole order with `409 insufficient_stock` naming the item. A cancel by the
+shopper, or by the maker for "Can't fulfil" or "Other", releases the hold
+(available back, `ORDER_RELEASED` movement, RELEASED). A maker cancel for
+"Out of stock" or "Damaged" writes the hold off (reserved down, available
+unchanged, WRITTEN_OFF): the maker has said the pieces are gone. Pickup will
+consume the hold (CONSUMED, Phase 7). Merchants cannot choose the two order
+reasons in a stock adjustment.
+
+Consequence: two shoppers can never buy the last piece twice (Scenario H,
+integration test), and a cancel puts stock back exactly once because the
+part row is locked. The cost is that held stock is invisible to other
+shoppers until the order is cancelled or ships, and that a maker who cancels
+"Out of stock" by mistake must restock by hand.
+
+## ADR-037: Checkout key makes placing an order idempotent
+
+Status: Accepted
+Date: 2026-10-28
+
+Decision: The checkout page issues a random key (`crypto.randomUUID()`) per
+render, and `POST /api/v1/orders` stores it as `orders.checkout_key` with a
+unique (`user_id`, `checkout_key`). A key seen before returns the existing
+order with 200 instead of placing another; the key is checked before the
+transaction, again after the cart row is locked, and a unique violation
+from a racing request also returns the existing order. The client disables
+Place order while a request is in flight. A general `idempotency_keys` table
+and an outbox for notifications are deferred until payments (Phase 6) and
+shipping (Phase 7) need them.
+
+Consequence: a double click, a retry after a network error, or two tabs
+pressing at once make one order (integration tests). The cost is that the
+guarantee covers order placement only; later write endpoints rely on locked
+state transitions instead, which make a repeat a `409 invalid_transition`
+rather than a second effect.

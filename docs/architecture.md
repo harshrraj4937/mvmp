@@ -9,10 +9,11 @@ Last verified: 2026-10-28, end of Phase 4, branch `gillu/phase-4`.
 
 ## Current state
 
-Phase 1 foundation, Phase 2 merchant authentication, Phase 3 catalog and
-Phase 4 customer storefront, plus the Gillu UI on top of the Relivator v1.4.6
-template. The `merchants`, `catalog` and `cart` modules exist; orders,
-payments and shipping arrive from Phase 5.
+Phase 1 foundation, Phase 2 merchant authentication, Phase 3 catalog,
+Phase 4 customer storefront and Phase 5 internal orders (cash on delivery),
+plus the Gillu UI on top of the Relivator v1.4.6 template. The `merchants`,
+`catalog`, `cart` and `orders` modules exist; online payment (Phase 6) and
+shipping (Phase 7) come next.
 
 ```mermaid
 flowchart LR
@@ -23,6 +24,10 @@ flowchart LR
     N --> API["/api/v1 (apiRoute: error contract)"]
     API --> M["modules/merchants"]
     API --> C["modules/catalog"]
+    API --> O["modules/orders"]
+    O --> C
+    O --> CA["modules/cart"]
+    O --> DB
     N --> M
     N --> C
     C --> IS["ImageStorage: local disk (dev/E2E) or UploadThing"]
@@ -34,7 +39,7 @@ flowchart LR
     BA --> DB[("PostgreSQL 16 via drizzle-orm 0.45")]
     H --> DB
     MIG["gillu-migrate (drizzle-kit migrate)"] --> DB
-    R[("gillu-redis — idle until Phase 5")]
+    R[("gillu-redis — idle until the first worker (Phase 6)")]
 ```
 
 | Area | As built |
@@ -44,6 +49,7 @@ flowchart LR
 | Identity module | `src/modules/identity`: `isAdmin` (domain), `grantAdmin` (application), `requireSession` / `requireAdmin` for pages, `authorizeSession` / `authorizeAdmin` for API routes (public API, server-only). `/admin/*` returns 404 for non-admins. **Rule:** every admin/merchant page and data function calls `requireAdmin()` (or its merchant equivalent) itself — layout guards are UX only, because Next.js still renders the page segment. `requireSession` is `cache()`d per request. First admin via `bun run admin:grant <email>`. |
 | Merchants module | `src/modules/merchants/{domain,application,presentation,index.ts}`. **domain**: statuses and transitions, locked fields, slug rules (pure; no IO, env or logger). **application**: `registerMerchant`, `updateMerchantProfile`, `submitMerchant`, review actions (guarded `UPDATE … WHERE status IN`), pickup locations, membership resolution. **presentation**: Zod 4 schemas that normalise Indian phones/PIN codes. **index.ts** (server-only): `authorizeMerchant()` for API routes; `requireMerchant()` / `requireApprovedMerchant()` for pages. The shop always comes from the caller's membership (`MerchantContext`), never from the request. See [merchant-workflow.md](merchant-workflow.md). |
 | Cart module | `src/modules/cart/{domain,application,presentation,index.ts}` (ADR-032). **domain**: limits (30 lines, 10 per line) and line status (`unavailable` > `sold_out` > `short` > `price_changed` > `ok`). **application**: `getCart`, `addCartItem`, `updateCartItem`, `removeCartItem`, `mergeGuestCart`; every write locks the cart row. **presentation**: guest cookie (`gillu_cart`, token hashed with SHA-256), request body schemas, `readCartOwner()` |
+| Orders module | `src/modules/orders/{domain,application,presentation,index.ts}` (ADR-035 to ADR-037). **domain**: requirements §18 statuses, the transition table (`canTransition`: maker NEW → ACKNOWLEDGED → PACKING → READY_FOR_PICKUP; pickup and delivery by the shipping integration only; shopper or maker cancel before delivery), `releaseMode` (maker "Out of stock"/"Damaged" write the held pieces off, every other cancel releases them), `deriveOrderStatus`, `GIL-<n>` numbers and part letters, shopper/maker wording. **application**: shopper addresses (10 max, one default), `placeOrder` (one transaction: lock cart, re-check lines and total, reserve stock, order + one part per maker + item snapshots + address snapshot + reservations + history, clear ordered lines; repeat checkout key returns the first order), `applyTransition` (locks order then part, moves stock, history, re-derives the order), shopper and merchant reads, `countMerchantOrders`. **presentation**: address, place, cancel, status and list schemas. Stock moves through `catalog/application/reservations.ts` (`reserveStock`, `releaseStock`, `consumeStock`); the cart is locked and cleared through `cart/application/checkout-cart.ts` |
 | Catalog module | `src/modules/catalog/{domain,application,presentation,infrastructure,index.ts}` (ADR-027 to ADR-030). **domain**: money (`parseRupees` → integer paise, `formatPaise`), SKU rules, product status transitions, publish blockers, constants (4 MB / 8 images, low stock ≤ 5). **application**: admin categories; products, variants and stock adjustments (guarded `UPDATE … available + delta >= 0` with a movement row); images; publish/unpublish/archive (guarded transitions, shop re-read, admin hold); admin list/hold/release; `listPurchasableProducts` for Phase 4. **infrastructure**: magic-byte image detection, local disk and UploadThing image storage. **index.ts** (server-only) re-exports. Product, variant and image ids of another shop are 404. See [merchant-workflow.md](merchant-workflow.md#products). |
 | Image storage | `ImageStorage` port (`put`, `delete`), chosen by `IMAGE_STORAGE_DRIVER` (ADR-029): `uploadthing` (default; needs `UPLOADTHING_TOKEN`, else uploads answer `503 image_storage_unavailable`) or `local` (files under `IMAGE_STORAGE_LOCAL_DIR`, served by `GET /api/v1/images/<key>` with `nosniff` and a one-year immutable cache; refused in production unless `IMAGE_STORAGE_ALLOW_LOCAL_IN_PRODUCTION=true`). E2E uses `local` in a temp directory. |
 | Gillu UI | ADR-026. The source HTML sites are ported as React components with their CSS kept and wrapped in `@scope (.gillu-site)` / `@scope (.gillu-desk)` (`src/css/gillu-{site,desk}.css`); fonts via `next/font/local` (`src/ui/gillu/fonts.ts`). Route groups: `(site)` — the landing page at `/` (`src/ui/gillu/site/*`); `/merchant/*` — the merchant desk shell and pages (`src/ui/gillu/desk/*`: shell, nav, search, heading, panel, badge, modal, empty state, product card and catalog forms); `(starter)` — remaining Relivator pages (`/admin`, `/dashboard`, `/products`, auth) with Tailwind/shadcn. |
@@ -51,10 +57,10 @@ flowchart LR
 | Authorization rule | Every page, route handler and data function authorizes itself (`requireAdmin`, `requireMerchant`, `requireApprovedMerchant`, `authorizeAdmin`, `authorizeMerchant`, `authorizeSession`). Layouts (`/admin`, `/merchant`) are UX only — Next.js renders a page segment without its layout when a client claims the layout is already on screen. E2E sends exactly such a forged RSC request and checks no data leaks. |
 | Platform | `src/platform/env.ts` (Zod 4 server env, fails naming variables only), `logger.ts` (pino JSON; `authorization`, `cookie`, `password`, `secret`, `token` redacted at top level and one level down), `request-id.ts`, `health.ts` |
 | Request correlation | `src/proxy.ts` sets `x-request-id` on every request/response, reusing a client id only if it matches `^[A-Za-z0-9_-]{8,128}$`; nginx does the same and logs it |
-| Database | postgres-js + drizzle-orm 0.45; schema in `src/db/schema/{users,uploads,merchants,catalog}`; **generated migrations** in `drizzle/` (`0000` baseline, `0001` admin columns, `0002` merchants, `0003` catalog, `0004` seeded categories); `runMigrations()` in `src/db/migrate.ts`. See [database-design.md](database-design.md) |
+| Database | postgres-js + drizzle-orm 0.45; schema in `src/db/schema/{users,uploads,merchants,catalog,cart,orders}`; **generated migrations** in `drizzle/` (`0000` baseline, `0001` admin columns, `0002` merchants, `0003` catalog, `0004` seeded categories, `0005` storefront and cart, `0006` orders); `runMigrations()` in `src/db/migrate.ts`. See [database-design.md](database-design.md) |
 | Uploads | Starter UploadThing routes (`uploads` table, URL + key only) remain for `/dashboard/uploads`; product images use the catalog `ImageStorage` port instead |
-| Payments | None. Polar removed (ADR-007); Cashfree arrives in Phase 6 |
-| Storefront | `/` is the Gillu landing page: real products once any shop sells, the illustrative previews until then. Shoppers browse `/explore` (search, category, region, made, sort), `/shops/[shop]` (maker story, ADR-034 strip for returning visitors), `/shops/[shop]/[product]` (ADR-033), `/cart`, and `/checkout` (signed-in; Place order waits for Phase 5). The storefront rules live in `catalog/application/storefront.ts`; the public API is `/api/v1/products`, `/api/v1/shops/[shop]` and `/api/v1/cart` |
+| Payments | Cash on delivery only: orders are `CONFIRMED` with payment `UNPAID` and Shiprocket collects at the door (Phase 7). "Pay online" shows "Coming soon"; Cashfree arrives in Phase 6. Polar removed (ADR-007) |
+| Storefront | `/` is the Gillu landing page: real products once any shop sells, the illustrative previews until then. Shoppers browse `/explore` (search, category, region, made, sort), `/shops/[shop]` (maker story, ADR-034 strip for returning visitors), `/shops/[shop]/[product]` (ADR-033), `/cart`, `/checkout` (signed-in: address, cash on delivery, Place order), `/orders`, `/orders/[number]` and `/account/addresses`. The site header shows "My orders" and "Sign out" when signed in. The storefront rules live in `catalog/application/storefront.ts`; the public API is `/api/v1/products`, `/api/v1/shops/[shop]` and `/api/v1/cart` |
 | Deployment | Compose: postgres, redis, migrate (one-shot), web, nginx (only published port). See [deployment.md](deployment.md) |
 | Tests | Vitest unit + Testcontainers integration, Playwright E2E. See [testing.md](testing.md) |
 

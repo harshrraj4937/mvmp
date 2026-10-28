@@ -166,6 +166,42 @@ The cart is server-side. A guest cart is identified by the `gillu_cart` cookie (
 
 Writes need a JSON body (`application/json`, else 400). `insufficient_stock` says "This item is sold out." at zero and "Only N left." otherwise.
 
+## Orders (shopper)
+
+All need a signed-in shopper (401 otherwise). Orders are cash on delivery
+(ADR-035 to ADR-037). An order view is `{ number, status, paymentMethod,
+paymentStatus, itemsTotalPaise, deliveryPaise, totalPaise, createdAt, address,
+parts[{ id, number, storeName, shopSlug, status, totalPaise, codAmountPaise,
+cancelReason, cancelNote, canceledBy, items[] }] }`; an item carries the
+snapshot (`productName`, `variantLabel`, `sku`, `unitPricePaise`,
+`declaredMrpPaise`, `quantity`, `lineTotalPaise`, `coverImageUrl`).
+
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /account/addresses` | — | 200 saved addresses, default first | — |
+| `POST /account/addresses` | `{ fullName, phone, line1, line2?, landmark?, city, state, postalCode, isDefault? }` | 201 address (the first address is the default) | 400 (`phone` 10-digit Indian mobile, `postalCode` 6 digits, `state` from the list), 409 `address_limit` (10) |
+| `PATCH /account/addresses/{id}` | non-empty subset of the fields | 200 address | 400, 404 `Address not found.` |
+| `DELETE /account/addresses/{id}` | — | 200 `null` (the newest other address becomes the default) | 404 |
+| `POST /orders` | `{ addressId, paymentMethod, expectedTotalPaise, checkoutKey }` (`checkoutKey` 16–64 of `[A-Za-z0-9_-]`) | 201 order view; 200 with the same order when the key was used before | 400, 404 `Address not found.`, 409 `payment_method_unavailable` (PREPAID until Phase 6), 409 `cart_empty`, 409 `cart_needs_attention` (an item is no longer on sale or its price changed), 409 `price_changed` (`details.totalPaise`), 409 `insufficient_stock` ("Only N left of <name>." / "<name> is sold out.", `details.available`, `details.variantId`) |
+| `GET /orders` | — | 200 summaries `{ number, status, partStatuses, totalPaise, createdAt }`, newest first | — |
+| `GET /orders/{number}` | — | 200 order view | 404 `Order not found.` (another shopper's order too) |
+| `POST /orders/{number}/cancel` | `{ merchantOrder?, reason? }` — `merchantOrder` (`GIL-n-A`) cancels one parcel, omitted cancels every open parcel | 200 order view; held stock goes back on sale | 400, 404 `Order not found.` / `Parcel not found.`, 409 `invalid_transition` (handed to the courier, delivered or already cancelled) |
+
+`POST /orders` merges a guest cart first, then places the order in one
+transaction and removes the ordered lines from the cart.
+
+## Orders (merchant)
+
+Need an APPROVED shop (`authorizeApprovedMerchant`): 401 signed out, 403
+without a shop or with a shop that is not approved. A part of another shop is `404 Order not found.`
+
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /merchant/orders?status=&page=` | — | 200 `{ items[{ id, number, createdAt, itemCount, itemsSummary, totalPaise, paymentMethod, status }], total }`, newest first, 25 a page | 400 unknown status or page |
+| `GET /merchant/orders/{id}` | — | 200 part view: items, totals, `codAmountPaise`, delivery address with phone, history, cancel fields | 404 |
+| `POST /merchant/orders/{id}/status` | `{ to }` — `ACKNOWLEDGED` (from NEW), `PACKING` (from ACKNOWLEDGED), `READY_FOR_PICKUP` (from PACKING) | 200 part view | 400, 404, 409 `invalid_transition` "This order can't move to that step." |
+| `POST /merchant/orders/{id}/cancel` | `{ reason, note? }` — `OUT_OF_STOCK`, `DAMAGED`, `CANNOT_FULFIL`, `OTHER` (note required) | 200 part view. OUT_OF_STOCK and DAMAGED write the held pieces off; the others put them back on sale | 400 (`note`: "Say why you are cancelling."), 404, 409 `invalid_transition` |
+
 ## Admin
 
 All require an admin session: 401 signed out, 403 otherwise.

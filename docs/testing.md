@@ -52,7 +52,7 @@ Shared merchant fixtures: `tests/support/merchant-fixtures.ts`
 (1×1 JPEG/PNG/GIF and a 3×2 WebP). E2E `approvedMerchant(browser, page,
 storeName)` signs up, onboards, submits and has an admin approve the shop.
 
-## Current coverage (Phases 1–4)
+## Current coverage (Phases 1–5)
 
 | Suite | Tests |
 |---|---|
@@ -111,7 +111,20 @@ storeName)` signs up, onboards, submits and has an admin approve the shop.
 | `tests/e2e/merchant-story.spec.ts` | the desk story panel: text validation, place and state, photos added, reordered and removed; completeness status |
 | `tests/e2e/cart-checkout.spec.ts` | two shops in one cart; quantities, removal and totals; stock falls under a shopper's cart (short, then restocked); sign-in and checkout entry; Place order disabled |
 | `tests/e2e/landing.spec.ts` (Phase 4 addition) | live products replace the previews; the Goa region links to explore; the hero action goes to explore |
+| `tests/unit/orders/domain.test.ts` | merchant steps, system steps and cancel per actor; release mode; order status derived from parts; order and part numbers; maker and shopper words for every status |
+| `tests/unit/orders/schemas.test.ts` | address: phone and PIN normalised, blanks absent, bad PIN / unknown state / long landmark refused, a patch needs a field; place order (checkout key shape, payment method); cancel and status (Other needs a note); merchant list query |
+| `tests/integration/catalog/reservations.test.ts` | reserve holds stock with an `ORDER_RESERVED` movement; more than available refused with nothing changed; a sold-out line rolls back the lines before it; release returns stock (`ORDER_RELEASED`); write-off and consume drop the hold without a movement; over-release throws |
+| `tests/integration/cart/checkout-cart.test.ts` | the locked cart lists lines in the order added; no cart is null; ordered lines removed, others kept |
+| `tests/integration/orders/addresses.test.ts` | the first address is the default and a new default moves it; up to ten addresses (`address_limit`); deleting the default makes the newest remaining one default; a patch keeps unnamed fields; another shopper's address 404 |
+| `tests/integration/orders/place-order.test.ts` | a two-shop cart becomes one order with a part per shop (snapshots, held stock, history, cart cleared); the same checkout key returns the same order, also for two presses at once; `cart_empty`; `cart_needs_attention` for a changed price, an unpublished product and a suspended shop; `price_changed` with the total; `payment_method_unavailable`; another shopper's address 404; Scenario H: two shoppers, one last piece, one order |
+| `tests/integration/orders/fulfilment.test.ts` | a maker walks a part to packed and cannot skip a step or go past packed; the merchant view has delivery details, SKUs and the COD amount; out of stock writes off, can't fulfil releases; a shopper cancels one parcel, then the rest; nothing cancels once delivered; a cancel after pickup returns nothing to stock; shopper and maker cancel at once → one wins, stock moves once; makers and shoppers see only their own; status filter and counts |
+| `tests/e2e/addresses-api.spec.ts`, `tests/e2e/orders-api.spec.ts` | 401 with `requestId` signed out; save, list, edit and delete an address, PIN field error, deleted address 404; a shopper without a shop gets 403 on merchant orders, an empty order list and 404 for an unknown order |
+| `tests/e2e/checkout.spec.ts` | a shopper adds an address and places a cash-on-delivery order from a two-shop cart; the order page shows one parcel per shop and the cart is empty |
+| `tests/e2e/shopper-orders.spec.ts` | a shopper sees their order and cancels one parcel; manages saved addresses (add, default, edit, delete) and signs out from the header |
+| `tests/e2e/merchant-orders.spec.ts` | desk nav "Orders 1" and dashboard metric; maker A prepares, packs, marks packed (stock held, "1 held for orders"); maker B cannot open A's part; B cancels as out of stock and the shopper sees the reason; shopper cancels A and stock returns; desk "Sign out" (approved and draft shops) |
 | `tests/e2e/health.spec.ts` | `/api/health` ok + request id echo + no-store; pages get a generated request id |
+
+Phase 5 smoke (manual, same isolation as Phase 4): `migrate` exit 0; `drizzle.__drizzle_migrations` has 7 rows; `orders`, `merchant_orders`, `order_items`, `order_address_snapshots`, `order_status_history`, `inventory_reservations`, `customer_addresses` exist; `order_number_seq` at 1001; `GET /` and `GET /explore` 200; `POST /api/v1/orders`, `GET /api/v1/merchant/orders` and `GET /api/v1/account/addresses` without a session → 401 JSON with `requestId` and `no-store`; `/checkout` signed out → 307 to sign-in with `next=/checkout`.
 
 Phase 4 smoke (manual, project `gillu-smoke` on port 18080 with renamed containers, throwaway env, `down -v` for that project only): `migrate` exit 0; `drizzle.__drizzle_migrations` has 6 rows; `carts`, `cart_items`, `merchant_story_images` exist; `GET /` and `GET /explore` 200; `GET /api/v1/products` 200 with `items: []`; `GET /api/v1/cart` 200 empty with `no-store`; `GET /api/v1/shops/nope` 404 JSON with `requestId`.
 
@@ -124,7 +137,9 @@ Deployment smoke (manual, Phases 1–3): `docker compose up --build -d --wait`, 
 ## Not yet covered
 
 UploadThing image storage against the real service (needs a token; the
-adapter is code complete). Provider contract/sandbox suites (Phases 6–7) and Scenarios B–J (from the
-phase that makes each possible; Scenario A is covered from Phase 2). Google
+adapter is code complete). Provider contract/sandbox suites (Phases 6–7) and the scenarios that need
+payment or shipping (from the phase that makes each possible; Scenario A is
+covered from Phase 2, Scenario H — two shoppers racing for the last piece —
+from Phase 5). Google
 OAuth is not automatable; it will be verified manually once credentials
 exist.

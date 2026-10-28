@@ -24,6 +24,7 @@ tables follow the plan in [design](superpowers/specs/2026-10-27-gillu-marketplac
 | `0003_cultured_wendell_vaughn` | Phase 3: enums `product_status`, `inventory_movement_reason`; tables `categories`, `products`, `product_variants`, `product_images`, `inventory`, `inventory_movements` with foreign keys, unique constraints, CHECKs and indexes — additive only |
 | `0004_seed_categories` | Custom migration: the seven launch categories (ids `cat_<slug>`), `ON CONFLICT DO NOTHING` so a re-run or an admin-created duplicate never fails |
 | `0005_bent_gamma_corps` | Phase 4: enums `composition_label` (INGREDIENTS, MATERIALS) and `made_how` (HANDMADE, HOMEMADE); tables `carts`, `cart_items`, `merchant_story_images` with foreign keys, unique constraints, CHECKs and indexes; new columns `categories.composition_label`, `products.composition`, `made_by`, `made_how`, `origin_place`, `origin_state`, `merchants.home_place`, `home_state`, `story`; indexes on product origin, made_how and `(status, published_at)`; a data update sets the craft categories to MATERIALS — additive only (no DROP, the data update touches only category labels) |
+| `0006_empty_nemesis` | Phase 5: enums `order_status`, `payment_status`, `payment_method`, `fulfilment_status`, `reservation_status`, `maker_cancel_reason`, `actor_role`; sequence `order_number_seq` (starts at 1001); tables `customer_addresses`, `orders`, `merchant_orders`, `order_items`, `order_address_snapshots`, `order_status_history`, `inventory_reservations` with foreign keys, unique constraints, CHECKs and indexes; `inventory_movement_reason` gains `ORDER_RESERVED` and `ORDER_RELEASED` (`ALTER TYPE … ADD VALUE`) — additive only |
 
 ## Current tables
 
@@ -50,6 +51,15 @@ erDiagram
     carts ||--o{ cart_items : holds
     product_variants ||--o{ cart_items : "in carts"
     merchants ||--o{ merchant_story_images : shows
+    user ||--o{ customer_addresses : saves
+    user ||--o{ orders : places
+    orders ||--|| order_address_snapshots : "ships to"
+    orders ||--o{ merchant_orders : "split by maker"
+    merchants ||--o{ merchant_orders : fulfils
+    merchant_orders ||--o{ order_items : contains
+    merchant_orders ||--o{ order_status_history : records
+    order_items ||--|| inventory_reservations : holds
+    product_variants ||--o{ inventory_reservations : "held stock"
 ```
 
 | Table | Notes |
@@ -72,14 +82,23 @@ erDiagram
 | `carts` | One cart per signed-in user (`user_id` unique, cascade with user) or per guest (`guest_token_hash` unique: SHA-256 of the random cookie value, never the token itself). CHECK: exactly one owner. Created on the first write; read requests never create one |
 | `cart_items` | `cart_id` → `carts` and `variant_id` → `product_variants` (both cascade); `quantity` CHECK 1–10; `unit_price_paise_seen` (bigint) — the price the shopper last saw, compared with the live price to show a price change; unique (`cart_id`, `variant_id`); index on `variant_id` |
 | `merchant_story_images` | Shop photos: `merchant_id` → `merchants` (cascade); `storage_key`, `url`, `alt`, `width`, `height`, `bytes`, `content_type`, `sort_order`. Same byte rules and storage port as product images; index on `merchant_id` |
-| `inventory_movements` | Append-only log: `variant_id` → `product_variants` (cascade), `delta` (CHECK ≠ 0), `available_after`, `reason` enum (INITIAL, RESTOCK, DAMAGED, CORRECTION, OTHER), `note`, `actor_user_id` → `user` (set null); index on `variant_id` |
+| `inventory_movements` | Append-only log of changes to `available`: `variant_id` → `product_variants` (cascade), `delta` (CHECK ≠ 0), `available_after`, `reason` enum (INITIAL, RESTOCK, DAMAGED, CORRECTION, OTHER; ORDER_RESERVED and ORDER_RELEASED from Phase 5 — merchants cannot choose these), `note`, `actor_user_id` → `user` (set null); index on `variant_id` |
+| `customer_addresses` | A shopper's saved delivery addresses: `user_id` → `user` (cascade); `full_name`, `phone` (`+91…`), `line1`, `line2?`, `landmark?`, `city`, `state` (state slug), `postal_code` (CHECK `^[1-9][0-9]{5}$`), `is_default`; partial unique index `customer_addresses_one_default` on `user_id` WHERE `is_default`; up to 10 per shopper (service rule) |
+| `orders` | One placement: `number` unique (`GIL-<n>` from `order_number_seq`), `user_id` → `user` (restrict), `status` (`order_status`, derived from the parts), `payment_method` (PREPAID, COD), `payment_status` (COD starts UNPAID), `checkout_key` with unique (`user_id`, `checkout_key`) for idempotent placement, `items_total_paise`, `delivery_paise` (0: delivery is free for the shopper), `total_paise`; money CHECK ≥ 0 |
+| `merchant_orders` | One maker's part: `number` unique (`GIL-<n>-A`, lettered by the maker's first cart line), `order_id` → `orders` (cascade), `merchant_id` → `merchants` (restrict), unique (`order_id`, `merchant_id`); `fulfilment_status` (NEW, ACKNOWLEDGED, PACKING, READY_FOR_PICKUP, HANDED_TO_COURIER, FULFILLED, CANCELED); `items_total_paise`, `delivery_paise`, `total_paise`, `cod_amount_paise` (= total for COD); nullable `courier_estimate_paise`, `courier_charge_paise`, `payment_fee_paise` for Phases 6–7; `cancel_reason` (`maker_cancel_reason`), `cancel_note`, `canceled_by` (`actor_role`), `canceled_at`; index (`merchant_id`, `fulfilment_status`) |
+| `order_items` | The product as sold: `merchant_order_id` → `merchant_orders` (cascade); `product_id`/`variant_id` (set null, the snapshot stands); `product_name`, `product_slug`, `variant_label`, `sku`, `unit_price_paise`, `declared_mrp_paise`, `quantity` (CHECK > 0), `line_total_paise`, `cover_image_url` |
+| `order_address_snapshots` | The delivery address as placed (`order_id` PK → `orders`, cascade); same fields as `customer_addresses` without `is_default`. Deleting a saved address never changes an order |
+| `order_status_history` | Every accepted part transition: `merchant_order_id` (cascade), `from_status` (null for placement), `to_status`, `actor_role` (SHOPPER, MERCHANT, SYSTEM), `actor_user_id` (set null), `reason`, `note` |
+| `inventory_reservations` | Stock held for one order item (`order_item_id` unique, cascade; `variant_id` restrict; `quantity` CHECK > 0); `status` HELD → RELEASED (cancel: back on sale), WRITTEN_OFF (maker says the pieces are gone) or CONSUMED (picked up, Phase 7) |
 
 Money is integer paise everywhere (ADR-027); no floating point. Stock only
 changes through a guarded `UPDATE inventory SET available = available + $d
 WHERE variant_id = $v AND available + $d >= 0` in the same transaction as
-its movement row (ADR-030).
+its movement row (ADR-030). Orders hold stock with `UPDATE inventory SET
+available = available - q, reserved = reserved + q WHERE variant_id = v AND
+available >= q`, variants in ascending id order (ADR-036).
 
-All Phase 2 to 4 timestamps are `timestamptz`. Ids are text cuid2 values generated in the
+All Phase 2 to 5 timestamps are `timestamptz`. Ids are text cuid2 values generated in the
 application (`createId()`). The merchant and catalog schema files use relative imports because
 drizzle-kit does not resolve the `~` alias.
 

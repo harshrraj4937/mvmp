@@ -6,7 +6,7 @@ session and passed (requirements §29). Status values: NOT_STARTED,
 IN_PROGRESS, COMPLETED, BLOCKED, NEEDS_INPUT.
 
 ## Current Phase
-Phase 5 — Internal Order System (not started). Phase 4 COMPLETED on `gillu/phase-4` (not merged); Phase 3 COMPLETED on `gillu/phase-3` (not merged); Phase 2 COMPLETED on `gillu/phase-2` (not merged).
+Phase 6 — Cashfree (not started). Phase 5 COMPLETED on `gillu/phase-5` (not merged); Phase 4 COMPLETED on `gillu/phase-4` (not merged); Phase 3 COMPLETED on `gillu/phase-3` (not merged); Phase 2 COMPLETED on `gillu/phase-2` (not merged).
 
 ## Audit Notes
 
@@ -218,16 +218,36 @@ Plan evaluation fix pass, 2026-10-28 (each fix RED→GREEN):
 | Gate after the fixes | typecheck, lint, knip PASS; unit 237/237; integration 148/148; E2E 75/75 |
 
 ### Phase 5 — Internal Order System
-Status: NOT_STARTED
+Status: COMPLETED
+Branch: `gillu/phase-5` (from `gillu/phase-4` @ 05a09e3). Not merged. Built on the unmerged Phase 4 branch.
+Spec: `docs/superpowers/specs/2026-10-28-gillu-phase-5-orders-design.md`; plan: `docs/superpowers/plans/2026-10-28-gillu-phase-5-orders.md`.
 
-- [ ] Customer addresses
-- [ ] Checkout validation
-- [ ] Multi-merchant suborders
-- [ ] Inventory reservations
-- [ ] Order lifecycle
-- [ ] Idempotency
-- [ ] Merchant order notifications
-- [ ] Deliver: customer can place an internal test order without an external payment provider
+- [x] Customer addresses — up to 10 per shopper, one default, `/account/addresses` and `/api/v1/account/addresses`; the order keeps a snapshot
+- [x] Checkout validation — signed-in shopper, address, cash on delivery; the server re-checks every line, the total (`price_changed`) and stock (`insufficient_stock`) inside one transaction; "Pay online" shows "Coming soon" (Cashfree, Phase 6)
+- [x] Multi-merchant suborders — one order, one part per shop (`GIL-1001-A`, `-B`), each with its own status and COD amount (ADR-035)
+- [x] Inventory reservations — held at placement, released on cancel, written off when the maker cancels "Out of stock"/"Damaged" (ADR-036); Scenario H (last piece) integration test
+- [x] Order lifecycle — maker steps NEW → ACKNOWLEDGED → PACKING → READY_FOR_PICKUP; shopper and maker cancel before pickup with reasons; status history; order status derived from parts
+- [x] Idempotency — checkout key per checkout page, unique per shopper (ADR-037)
+- [x] Merchant order notifications — desk nav "Orders" badge with the NEW count and dashboard "Your orders" metrics (WhatsApp alerts deferred, as agreed)
+- [x] Shopper pages — `/orders`, `/orders/[number]` (parcels, cancel), header "My orders" / "Sign out"
+- [x] Merchant desk — `/merchant/orders` (tabs, 25 a page), `/merchant/orders/[id]` (items, address, COD amount, history, steps, cancel), "Sign out" in the desk sidebar
+- [x] Deliver: a shopper places an internal cash-on-delivery order from a two-shop cart and each maker works its own parcel (E2E `checkout.spec.ts`, `merchant-orders.spec.ts`)
+
+#### Verification
+Run 2026-10-28 on `gillu/phase-5`:
+
+| Check | Result |
+|---|---|
+| `bun run typecheck` | PASS |
+| `bun run lint` (ESLint + Biome) | PASS |
+| `bunx knip` | PASS |
+| `bun run test:unit` (Vitest) | PASS — 249/249 |
+| `bun run test:integration` (Testcontainers Postgres 16) | PASS — 192/192 |
+| `bun run test:e2e` (Playwright, Chromium, includes production build) | PASS — 84/84 |
+| Compose smoke (isolated project `gillu-smoke`, port 18080, renamed containers, throwaway env) | PASS — `postgres`, `redis`, `web`, `nginx` healthy; `migrate` exited 0; `drizzle.__drizzle_migrations` has 7 rows; `customer_addresses`, `orders`, `merchant_orders`, `order_items`, `order_address_snapshots`, `order_status_history`, `inventory_reservations` exist; `order_number_seq` at 1001; `GET /` and `GET /explore` 200; `POST /api/v1/orders`, `GET /api/v1/merchant/orders`, `GET /api/v1/account/addresses` signed out → 401 JSON with `requestId` (`no-store`); `/checkout` signed out → 307 to sign-in with `next`; `down -v` removed only `gillu-smoke_*` volumes; `gillu_*` and `relivator_postgres_data` volumes still exist |
+| Security boundaries | Orders, parcels and addresses of another shopper are 404; another shop's part is 404 on the API and the not-found page in the desk; the shop always comes from membership; prices, totals and stock come from the server only (the client's `expectedTotalPaise` can only refuse an order); order, part and inventory rows are locked on every change |
+
+Final review: see the Phase 5 report below.
 
 ### Phase 6 — Cashfree
 Status: NOT_STARTED
@@ -405,3 +425,28 @@ KNOWN ISSUES:
 - Google sign-in is code complete but not verified against Google (needs credentials, as in Phase 2)
 BLOCKERS: none
 NEXT PHASE: 5 — Internal Order System
+
+### Phase 5 report
+
+PHASE: 5 — Internal Order System
+STATUS: COMPLETED (branch `gillu/phase-5`, not merged)
+FEATURES IMPLEMENTED:
+- Shopper addresses: `/account/addresses`, `GET/POST /api/v1/account/addresses`, `PATCH/DELETE /api/v1/account/addresses/[id]`
+- Checkout: delivery address (pick or add), cash on delivery, summary with free delivery, Place order → `/orders/<n>?placed=1`
+- Orders: `POST/GET /api/v1/orders`, `GET /api/v1/orders/[number]`, `POST /api/v1/orders/[number]/cancel`; one order, one part per shop, item and address snapshots, status history, idempotent checkout key
+- Stock: reserve at placement, release on cancel, write-off for maker "Out of stock"/"Damaged"; "N held for orders" on the product page
+- Shopper pages: `/orders`, `/orders/[number]` with parcel cancel; header "My orders" and "Sign out"
+- Merchant desk: `/merchant/orders` and `/merchant/orders/[id]`, steps and cancel with reasons, nav badge, dashboard order metrics, "Sign out"; `GET /api/v1/merchant/orders`, `GET /api/v1/merchant/orders/[id]`, `POST …/status`, `POST …/cancel`
+- Migration 0006 (additive): seven enums, `order_number_seq`, seven tables, two new stock movement reasons
+FILES CHANGED: `git diff --shortstat gillu/phase-4..gillu/phase-5` before the docs commit — 81 files, +10,214 / −47 (12 commits); main areas: `src/modules/orders/**`, `src/modules/catalog/application/reservations.ts`, `src/modules/cart/application/checkout-cart.ts`, `src/app/api/v1/{orders,account,merchant/orders}/**`, `src/app/(site)/{checkout,orders,account}/**`, `src/app/merchant/orders/**`, `src/ui/gillu/{store,desk}/**`, `drizzle/0006_*`, `tests/**`, `docs/*`, `diagrams/*`
+TESTS EXECUTED: typecheck, lint, knip, unit, integration (Testcontainers), E2E (production build), Compose smoke (project `gillu-smoke`)
+TEST RESULTS: unit 249/249, integration 192/192, E2E 84/84; typecheck, lint, knip pass; Compose smoke pass (7 migrations, new tables, order endpoints 401 signed out, `down -v` for `gillu-smoke` only)
+FINAL REVIEW: self-review by the author (no reviewer subagent dispatched); findings in the Phase 5 ledger and the hand-off message.
+KNOWN ISSUES:
+- Cash on delivery only; "Pay online" waits for Cashfree (Phase 6)
+- Parcels stop at "Packed — waiting for pickup"; pickup, delivery and stock consumption arrive with Shiprocket (Phase 7)
+- No WhatsApp or email alert for a new order; the desk badge and dashboard count only
+- A desk URL for another shop's part renders the not-found page with HTTP 200 (streamed behind `merchant/loading.tsx`, as for products since Phase 3); no data is shown
+- Google sign-in is code complete but not verified against Google (needs credentials, as in Phase 2)
+BLOCKERS: none
+NEXT PHASE: 6 — Cashfree
